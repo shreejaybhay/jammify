@@ -169,8 +169,8 @@ function VerifyEmailFormContent() {
     </div>
   );
 }
-export def
-ault function VerifyEmailForm() {
+
+export default function VerifyEmailForm() {
   return (
     <Suspense fallback={
       <div className="flex items-center justify-center p-8">

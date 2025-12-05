@@ -677,4 +677,22 @@ export default function PlaylistPage() {
       <PlaylistPageContent />
     </Suspense>
   );
+}     
+     }
+        </div>
+      </SidebarInset>
+    </SidebarProvider>
+  );
+}
+
+export default function PlaylistPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    }>
+      <PlaylistPageContent />
+    </Suspense>
+  );
 }
