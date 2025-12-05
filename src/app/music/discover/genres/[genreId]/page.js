@@ -1,0 +1,585 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useRouter, useParams } from "next/navigation";
+import { AppSidebar } from "@/components/app-sidebar";
+import {
+    Breadcrumb,
+    BreadcrumbItem,
+    BreadcrumbLink,
+    BreadcrumbList,
+    BreadcrumbPage,
+    BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
+import { Separator } from "@/components/ui/separator";
+import {
+    SidebarInset,
+    SidebarProvider,
+    SidebarTrigger,
+} from "@/components/ui/sidebar";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Play, ArrowLeft, Heart, Music, ListMusic } from "lucide-react";
+import { genres } from "@/data/genres";
+import { useLikedSongs } from "@/hooks/useLikedSongs";
+import { useMusicPlayer } from "@/contexts/music-player-context";
+
+export default function GenreDetailPage() {
+    const router = useRouter();
+    const params = useParams();
+    const genreId = params.genreId;
+
+    const [songs, setSongs] = useState([]);
+    const [playlists, setPlaylists] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [hasLoaded, setHasLoaded] = useState(false);
+    const [activeTab, setActiveTab] = useState('songs');
+    const [songsPage, setSongsPage] = useState(5); // Track current page for songs
+    const [playlistsPage, setPlaylistsPage] = useState(3); // Track current page for playlists
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [hasMoreSongs, setHasMoreSongs] = useState(true);
+    const [hasMorePlaylists, setHasMorePlaylists] = useState(true);
+
+    // Find the current genre
+    const currentGenre = genres.find(g => g.id === genreId);
+    const genreName = currentGenre?.name || genreId;
+
+    // Initialize hooks
+    const { toggleLike, isLiked } = useLikedSongs('shree jaybhay');
+    const { playSong, currentSong, isPlaying } = useMusicPlayer();
+
+    useEffect(() => {
+        const fetchGenreContent = async () => {
+            if (!genreId) return;
+
+            try {
+                setLoading(true);
+
+                // Fetch multiple pages of songs (popular first)
+                const fetchSongs = async () => {
+                    const allSongs = [];
+                    const maxPages = 5; // Fetch first 5 pages (200 songs total)
+
+                    for (let page = 1; page <= maxPages; page++) {
+                        try {
+                            const response = await fetch(`https://jiosaavn-api-blush.vercel.app/api/search/songs?query=${encodeURIComponent(genreName)}&limit=40${page}`);
+                            const data = await response.json();
+
+                            if (data.success && data.data?.results && data.data.results.length > 0) {
+                                allSongs.push(...data.data.results);
+                            } else {
+                                break; // Stop if no more results
+                            }
+                        } catch (error) {
+                            console.error(`Error fetching songs page ${page}:`, error);
+                            break;
+                        }
+                    }
+
+                    return allSongs;
+                };
+
+                // Fetch multiple pages of playlists
+                const fetchPlaylists = async () => {
+                    const allPlaylists = [];
+                    const maxPages = 3; // Fetch first 3 pages (120 playlists total)
+
+                    for (let page = 1; page <= maxPages; page++) {
+                        try {
+                            const response = await fetch(`https://jiosaavn-api-blush.vercel.app/api/search/playlists?query=${encodeURIComponent(genreName)}&limit=40&page=${page}`);
+                            const data = await response.json();
+
+                            if (data.success && data.data?.results && data.data.results.length > 0) {
+                                allPlaylists.push(...data.data.results);
+                            } else {
+                                break; // Stop if no more results
+                            }
+                        } catch (error) {
+                            console.error(`Error fetching playlists page ${page}:`, error);
+                            break;
+                        }
+                    }
+
+                    return allPlaylists;
+                };
+
+                // Fetch both songs and playlists concurrently
+                const [songsResults, playlistsResults] = await Promise.all([
+                    fetchSongs(),
+                    fetchPlaylists()
+                ]);
+
+                // Remove duplicates based on ID
+                const uniqueSongs = songsResults.filter((song, index, self) =>
+                    index === self.findIndex(s => s.id === song.id)
+                );
+
+                const uniquePlaylists = playlistsResults.filter((playlist, index, self) =>
+                    index === self.findIndex(p => p.id === playlist.id)
+                );
+
+                setSongs(uniqueSongs);
+                setPlaylists(uniquePlaylists);
+
+            } catch (error) {
+                console.error('Error fetching genre content:', error);
+            } finally {
+                setLoading(false);
+                setHasLoaded(true);
+            }
+        };
+
+        fetchGenreContent();
+    }, [genreId, genreName]);
+
+    const handleGoBack = () => {
+        router.back();
+    };
+
+    const handleSongClick = (song, index) => {
+        playSong(song, songs);
+    };
+
+    const handlePlaylistClick = (playlistId) => {
+        router.push(`/music/playlist/${playlistId}`);
+    };
+
+    const formatDuration = (duration) => {
+        if (!duration) return "0:00";
+        const minutes = Math.floor(duration / 60);
+        const seconds = duration % 60;
+        return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    };
+
+    const decodeHtmlEntities = (text) => {
+        if (!text) return text;
+        const textarea = document.createElement('textarea');
+        textarea.innerHTML = text;
+        return textarea.value;
+    };
+
+    // Load more songs function
+    const loadMoreSongs = async () => {
+        if (loadingMore || !hasMoreSongs) return;
+
+        try {
+            setLoadingMore(true);
+            const nextPage = songsPage + 1;
+
+            const response = await fetch(`https://jiosaavn-api-blush.vercel.app/api/search/songs?query=${encodeURIComponent(genreName)}&limit=40&page=${nextPage}`);
+            const data = await response.json();
+
+            if (data.success && data.data?.results && data.data.results.length > 0) {
+                // Remove duplicates and add new songs
+                const newSongs = data.data.results.filter(newSong =>
+                    !songs.some(existingSong => existingSong.id === newSong.id)
+                );
+
+                if (newSongs.length > 0) {
+                    setSongs(prevSongs => [...prevSongs, ...newSongs]);
+                    setSongsPage(nextPage);
+                } else {
+                    setHasMoreSongs(false);
+                }
+
+                // If we got less than 40 results, we've reached the end
+                if (data.data.results.length < 40) {
+                    setHasMoreSongs(false);
+                }
+            } else {
+                setHasMoreSongs(false);
+            }
+        } catch (error) {
+            console.error('Error loading more songs:', error);
+        } finally {
+            setLoadingMore(false);
+        }
+    };
+
+    // Load more playlists function
+    const loadMorePlaylists = async () => {
+        if (loadingMore || !hasMorePlaylists) return;
+
+        try {
+            setLoadingMore(true);
+            const nextPage = playlistsPage + 1;
+
+            const response = await fetch(`https://jiosaavn-api-blush.vercel.app/api/search/playlists?query=${encodeURIComponent(genreName)}&limit=40&page=${nextPage}`);
+            const data = await response.json();
+
+            if (data.success && data.data?.results && data.data.results.length > 0) {
+                // Remove duplicates and add new playlists
+                const newPlaylists = data.data.results.filter(newPlaylist =>
+                    !playlists.some(existingPlaylist => existingPlaylist.id === newPlaylist.id)
+                );
+
+                if (newPlaylists.length > 0) {
+                    setPlaylists(prevPlaylists => [...prevPlaylists, ...newPlaylists]);
+                    setPlaylistsPage(nextPage);
+                } else {
+                    setHasMorePlaylists(false);
+                }
+
+                // If we got less than 40 results, we've reached the end
+                if (data.data.results.length < 40) {
+                    setHasMorePlaylists(false);
+                }
+            } else {
+                setHasMorePlaylists(false);
+            }
+        } catch (error) {
+            console.error('Error loading more playlists:', error);
+        } finally {
+            setLoadingMore(false);
+        }
+    };
+
+    return (
+        <SidebarProvider>
+            <AppSidebar />
+            <SidebarInset>
+                <header className="sticky top-0 z-50 flex h-16 shrink-0 items-center gap-2 border-b bg-background">
+                    <div className="flex items-center gap-2 px-3 md:px-4">
+                        <SidebarTrigger className="-ml-1" />
+                        <Separator orientation="vertical" className="mr-2 data-[orientation=vertical]:h-4" />
+                        <Button variant="ghost" size="sm" onClick={handleGoBack} className="mr-2">
+                            <ArrowLeft className="w-4 h-4 mr-1" />
+                            <span className="hidden sm:inline">Back</span>
+                        </Button>
+                        <Breadcrumb>
+                            <BreadcrumbList>
+                                <BreadcrumbItem className="hidden md:block">
+                                    <BreadcrumbLink href="/music">Music</BreadcrumbLink>
+                                </BreadcrumbItem>
+                                <BreadcrumbSeparator className="hidden md:block" />
+                                <BreadcrumbItem className="hidden md:block">
+                                    <BreadcrumbLink href="/music/discover">Discover</BreadcrumbLink>
+                                </BreadcrumbItem>
+                                <BreadcrumbSeparator className="hidden md:block" />
+                                <BreadcrumbItem className="hidden md:block">
+                                    <BreadcrumbLink href="/music/discover/genres">Genres</BreadcrumbLink>
+                                </BreadcrumbItem>
+                                <BreadcrumbSeparator className="hidden md:block" />
+                                <BreadcrumbItem>
+                                    <BreadcrumbPage>{genreName}</BreadcrumbPage>
+                                </BreadcrumbItem>
+                            </BreadcrumbList>
+                        </Breadcrumb>
+                    </div>
+                </header>
+
+                <div className="flex-1 overflow-y-auto">
+                    {/* Genre Header */}
+                    <div className={`p-4 md:p-6 text-white bg-gradient-to-br ${currentGenre?.color || 'from-purple-500 to-pink-500'}`}>
+                        <div className="flex items-end gap-6">
+                            <div className="flex-1">
+                                <Badge variant="secondary" className="mb-2">
+                                    Genre
+                                </Badge>
+                                <h1 className="text-2xl md:text-4xl lg:text-6xl font-bold mb-2 md:mb-4">
+                                    {genreName}
+                                </h1>
+                                <p className="text-sm md:text-lg opacity-90">
+                                    Discover the best {genreName.toLowerCase()} music
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Tabs */}
+                    <div className="border-b">
+                        <div className="flex px-3 md:px-6">
+                            <button
+                                className={`px-3 md:px-4 py-3 font-medium border-b-2 transition-colors text-sm md:text-base ${activeTab === 'songs'
+                                    ? 'border-primary text-primary'
+                                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                                    }`}
+                                onClick={() => setActiveTab('songs')}
+                            >
+                                Songs ({songs.length})
+                            </button>
+                            <button
+                                className={`px-3 md:px-4 py-3 font-medium border-b-2 transition-colors text-sm md:text-base ${activeTab === 'playlists'
+                                    ? 'border-primary text-primary'
+                                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                                    }`}
+                                onClick={() => setActiveTab('playlists')}
+                            >
+                                Playlists ({playlists.length})
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Content */}
+                    <div className="px-3 md:px-6 pb-24">
+                        {activeTab === 'songs' && (
+                            <div className="py-4 md:py-6">
+                                {hasLoaded && songs.length === 0 ? (
+                                    <div className="text-center py-12">
+                                        <Music className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+                                        <h3 className="text-lg font-medium mb-2">No songs found</h3>
+                                        <p className="text-muted-foreground">
+                                            Try exploring other genres
+                                        </p>
+                                    </div>
+                                ) : songs.length > 0 ? (
+                                    <>
+                                        <div className="space-y-1">
+                                            {songs.map((song, index) => {
+                                                const isCurrentSong = currentSong?.id === song.id;
+                                                return (
+                                                    <div key={song.id || index}>
+                                                        {/* Mobile Layout */}
+                                                        <div
+                                                            className={`md:hidden flex items-center gap-3 p-3 rounded hover:bg-muted/50 group cursor-pointer ${isCurrentSong ? 'bg-muted/30' : ''
+                                                                }`}
+                                                            onClick={() => handleSongClick(song, index)}
+                                                        >
+                                                            <div className="w-6 text-center flex-shrink-0">
+                                                                {isCurrentSong ? (
+                                                                    <div className="flex items-center justify-center">
+                                                                        <div className={`w-4 h-4 flex items-center justify-center ${isPlaying ? 'text-green-500' : 'text-muted-foreground'
+                                                                            }`}>
+                                                                            {isPlaying ? (
+                                                                                <div className="flex gap-0.5">
+                                                                                    <div className="w-0.5 h-3 bg-green-500 animate-pulse"></div>
+                                                                                    <div className="w-0.5 h-2 bg-green-500 animate-pulse" style={{ animationDelay: '0.1s' }}></div>
+                                                                                    <div className="w-0.5 h-4 bg-green-500 animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+                                                                                </div>
+                                                                            ) : (
+                                                                                <Play className="w-4 h-4" />
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                ) : (
+                                                                    <>
+                                                                        <span className="text-muted-foreground group-hover:hidden text-sm">
+                                                                            {index + 1}
+                                                                        </span>
+                                                                        <Play className="w-4 h-4 mx-auto hidden group-hover:block" />
+                                                                    </>
+                                                                )}
+                                                            </div>
+
+                                                            <div className="w-12 h-12 rounded bg-gradient-to-br from-purple-500 to-pink-500 flex-shrink-0">
+                                                                {song.image?.[0]?.url ? (
+                                                                    <img
+                                                                        src={song.image[0].url}
+                                                                        alt={song.name}
+                                                                        className="w-full h-full object-cover rounded"
+                                                                    />
+                                                                ) : (
+                                                                    <div className="w-full h-full flex items-center justify-center">
+                                                                        <Music className="w-4 h-4 opacity-50 text-white" />
+                                                                    </div>
+                                                                )}
+                                                            </div>
+
+                                                            <div className="min-w-0 flex-1">
+                                                                <p className={`font-medium truncate ${isCurrentSong ? 'text-green-500' : ''
+                                                                    }`}>
+                                                                    {decodeHtmlEntities(song.name)}
+                                                                </p>
+                                                                <p className={`text-sm truncate ${isCurrentSong ? 'text-green-400' : 'text-muted-foreground'
+                                                                    }`}>
+                                                                    {song.artists?.primary?.map(artist => artist.name).join(', ') || 'Unknown Artist'}
+                                                                </p>
+                                                            </div>
+
+                                                            <div className="flex items-center gap-2 flex-shrink-0">
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    className={`p-2 h-8 w-8 ${isLiked(song.id) ? 'text-red-500' : 'text-muted-foreground'
+                                                                        }`}
+                                                                    onClick={async (e) => {
+                                                                        e.stopPropagation();
+                                                                        await toggleLike(song);
+                                                                    }}
+                                                                >
+                                                                    <Heart className={`w-4 h-4 ${isLiked(song.id) ? 'fill-current' : ''}`} />
+                                                                </Button>
+                                                                <div className="text-xs text-muted-foreground min-w-[35px] text-right">
+                                                                    {formatDuration(song.duration)}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Desktop Layout */}
+                                                        <div
+                                                            className={`hidden md:grid grid-cols-[auto_1fr_auto] gap-4 items-center p-2 rounded hover:bg-muted/50 group cursor-pointer ${isCurrentSong ? 'bg-muted/30' : ''
+                                                                }`}
+                                                            onClick={() => handleSongClick(song, index)}
+                                                        >
+                                                            <div className="w-8 text-center">
+                                                                {isCurrentSong ? (
+                                                                    <div className="flex items-center justify-center">
+                                                                        <div className={`w-4 h-4 flex items-center justify-center ${isPlaying ? 'text-green-500' : 'text-muted-foreground'
+                                                                            }`}>
+                                                                            {isPlaying ? (
+                                                                                <div className="flex gap-0.5">
+                                                                                    <div className="w-0.5 h-3 bg-green-500 animate-pulse"></div>
+                                                                                    <div className="w-0.5 h-2 bg-green-500 animate-pulse" style={{ animationDelay: '0.1s' }}></div>
+                                                                                    <div className="w-0.5 h-4 bg-green-500 animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+                                                                                </div>
+                                                                            ) : (
+                                                                                <Play className="w-4 h-4" />
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                ) : (
+                                                                    <>
+                                                                        <span className="text-muted-foreground group-hover:hidden">
+                                                                            {index + 1}
+                                                                        </span>
+                                                                        <Play className="w-4 h-4 mx-auto hidden group-hover:block" />
+                                                                    </>
+                                                                )}
+                                                            </div>
+
+                                                            <div className="flex items-center gap-3 min-w-0">
+                                                                <div className="w-10 h-10 rounded bg-gradient-to-br from-purple-500 to-pink-500 shrink-0">
+                                                                    {song.image?.[0]?.url ? (
+                                                                        <img
+                                                                            src={song.image[0].url}
+                                                                            alt={song.name}
+                                                                            className="w-full h-full object-cover rounded"
+                                                                        />
+                                                                    ) : (
+                                                                        <div className="w-full h-full flex items-center justify-center">
+                                                                            <Music className="w-3 h-3 opacity-50 text-white" />
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                                <div className="min-w-0">
+                                                                    <p className={`font-medium truncate ${isCurrentSong ? 'text-green-500' : ''
+                                                                        }`}>
+                                                                        {decodeHtmlEntities(song.name)}
+                                                                    </p>
+                                                                    <p className={`text-sm truncate ${isCurrentSong ? 'text-green-400' : 'text-muted-foreground'
+                                                                        }`}>
+                                                                        {song.artists?.primary?.map(artist => artist.name).join(', ') || 'Unknown Artist'}
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="flex items-center gap-2">
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    className={`opacity-0 group-hover:opacity-100 transition-opacity p-1 h-8 w-8 ${isLiked(song.id) ? 'text-red-500 opacity-100' : ''
+                                                                        }`}
+                                                                    onClick={async (e) => {
+                                                                        e.stopPropagation();
+                                                                        await toggleLike(song);
+                                                                    }}
+                                                                >
+                                                                    <Heart className={`w-4 h-4 ${isLiked(song.id) ? 'fill-current' : ''}`} />
+                                                                </Button>
+                                                                <div className="w-12 text-center text-sm text-muted-foreground">
+                                                                    {formatDuration(song.duration)}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+
+                                        {/* Load More Songs Button */}
+                                        {hasMoreSongs && (
+                                            <div className="flex justify-center mt-6 md:mt-8">
+                                                <Button
+                                                    variant="outline"
+                                                    onClick={loadMoreSongs}
+                                                    disabled={loadingMore}
+                                                    className="px-6 md:px-8"
+                                                >
+                                                    {loadingMore ? 'Loading...' : 'Load More Songs'}
+                                                </Button>
+                                            </div>
+                                        )}
+                                    </>
+                                ) : null}
+                            </div>
+                        )}
+
+                        {activeTab === 'playlists' && (
+                            <div className="py-4 md:py-6">
+                                {hasLoaded && playlists.length === 0 ? (
+                                    <div className="text-center py-12">
+                                        <ListMusic className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+                                        <h3 className="text-lg font-medium mb-2">No playlists found</h3>
+                                        <p className="text-muted-foreground">
+                                            Try exploring other genres
+                                        </p>
+                                    </div>
+                                ) : playlists.length > 0 ? (
+                                    <>
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-4">
+                                            {playlists.map((playlist) => (
+                                                <div
+                                                    key={playlist.id}
+                                                    className="group cursor-pointer p-2 md:p-3 rounded-lg hover:bg-muted/50 transition-colors"
+                                                    onClick={() => handlePlaylistClick(playlist.id)}
+                                                >
+                                                    <div className="relative mb-2 md:mb-3">
+                                                        <div className="aspect-square rounded-lg overflow-hidden bg-gradient-to-br from-blue-500 to-purple-500">
+                                                            {playlist.image?.[2]?.url || playlist.image?.[1]?.url || playlist.image?.[0]?.url ? (
+                                                                <img
+                                                                    src={playlist.image[2]?.url || playlist.image[1]?.url || playlist.image[0]?.url}
+                                                                    alt={playlist.name}
+                                                                    className="w-full h-full object-cover"
+                                                                />
+                                                            ) : (
+                                                                <div className="w-full h-full flex items-center justify-center">
+                                                                    <ListMusic className="w-8 h-8 md:w-12 md:h-12 opacity-50 text-white" />
+                                                                </div>
+                                                            )}
+                                                        </div>
+
+                                                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20 rounded-lg">
+                                                            <Button
+                                                                size="sm"
+                                                                className="rounded-full w-10 h-10 md:w-12 md:h-12 bg-green-500 hover:bg-green-600 text-black shadow-lg"
+                                                            >
+                                                                <Play className="w-4 h-4 md:w-5 md:h-5 ml-0.5" />
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="space-y-1">
+                                                        <h3 className="font-medium truncate text-sm md:text-base">
+                                                            {decodeHtmlEntities(playlist.name)}
+                                                        </h3>
+                                                        <p className="text-xs md:text-sm text-muted-foreground truncate">
+                                                            {playlist.subtitle || 'Playlist'}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        {/* Load More Playlists Button */}
+                                        {hasMorePlaylists && (
+                                            <div className="flex justify-center mt-6 md:mt-8">
+                                                <Button
+                                                    variant="outline"
+                                                    onClick={loadMorePlaylists}
+                                                    disabled={loadingMore}
+                                                    className="px-6 md:px-8"
+                                                >
+                                                    {loadingMore ? 'Loading...' : 'Load More Playlists'}
+                                                </Button>
+                                            </div>
+                                        )}
+                                    </>
+                                ) : null}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </SidebarInset>
+        </SidebarProvider>
+    );
+}

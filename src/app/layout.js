@@ -3,6 +3,8 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { SessionProvider } from "next-auth/react";
 import AuthProvider from "@/components/auth-provider";
+import { MusicPlayerProvider } from "@/contexts/music-player-context";
+import { MusicPlayerWrapper } from "@/components/music-player-wrapper";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -53,7 +55,10 @@ export default function RootLayout({ children }) {
             enableSystem
             disableTransitionOnChange
           >
-            {children}
+            <MusicPlayerProvider>
+              {children}
+              <MusicPlayerWrapper />
+            </MusicPlayerProvider>
           </ThemeProvider>
         </AuthProvider>
       </body>
