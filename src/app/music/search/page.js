@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -24,7 +24,7 @@ import {
 import { useMusicPlayer } from "@/contexts/music-player-context";
 import { useLikedSongs } from "@/hooks/useLikedSongs";
 
-export default function SearchPage() {
+function SearchPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const initialQuery = searchParams.get('q') || '';
@@ -907,5 +907,17 @@ export default function SearchPage() {
         </div>
       </SidebarInset>
     </SidebarProvider>
+  );
+}
+expo
+rt default function SearchPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    }>
+      <SearchPageContent />
+    </Suspense>
   );
 }
