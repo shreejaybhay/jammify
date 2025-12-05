@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ModeToggle } from "@/components/mode-toggle";
@@ -11,7 +12,7 @@ const errorMessages = {
   Default: "An error occurred during authentication.",
 };
 
-export default function AuthError() {
+function ErrorContent() {
   const searchParams = useSearchParams();
   const error = searchParams.get("error");
 
@@ -45,5 +46,28 @@ export default function AuthError() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AuthError() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="absolute top-6 right-6">
+          <ModeToggle />
+        </div>
+        <div className="w-full max-w-md text-center">
+          <div className="mb-8">
+            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+              <div className="w-6 h-6 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin"></div>
+            </div>
+            <h1 className="text-2xl font-bold text-foreground mb-2">Loading...</h1>
+            <p className="text-muted-foreground mb-6">Please wait while we load the error details.</p>
+          </div>
+        </div>
+      </div>
+    }>
+      <ErrorContent />
+    </Suspense>
   );
 }
