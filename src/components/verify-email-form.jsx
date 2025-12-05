@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowLeft, CheckCircle } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,7 @@ const verifyEmailSchema = z.object({
   code: z.string().length(6, "Code must be 6 digits"),
 });
 
-export default function VerifyEmailForm() {
+function VerifyEmailFormContent() {
   const [isVerified, setIsVerified] = useState(false);
   const [code, setCode] = useState(["", "", "", "", "", ""]);
   const inputRefs = useRef([]);
@@ -167,5 +167,17 @@ export default function VerifyEmailForm() {
         </a>
       </div>
     </div>
+  );
+}
+export def
+ault function VerifyEmailForm() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center p-8">
+        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+      </div>
+    }>
+      <VerifyEmailFormContent />
+    </Suspense>
   );
 }
