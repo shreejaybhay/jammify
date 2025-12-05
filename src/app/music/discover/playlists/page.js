@@ -20,30 +20,30 @@ import {
 import { Button } from "@/components/ui/button";
 import { Play, ArrowLeft } from "lucide-react";
 
-export default function NewReleasesPage() {
+export default function PlaylistsPage() {
   const router = useRouter();
-  const [newReleases, setNewReleases] = useState([]);
+  const [playlists, setPlaylists] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentlyPlaying, setCurrentlyPlaying] = useState(null);
 
   useEffect(() => {
-    const fetchAllNewReleases = async () => {
+    const fetchAllPlaylists = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/search/playlists?query=new%20releases&page=0&limit=50`);
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/search/playlists?query=trending&page=0&limit=50`);
         const data = await response.json();
 
         if (data.success && data.data.results) {
-          setNewReleases(data.data.results);
+          setPlaylists(data.data.results);
         }
       } catch (error) {
-        console.error('Error fetching new releases:', error);
+        console.error('Error fetching playlists:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchAllNewReleases();
+    fetchAllPlaylists();
   }, []);
 
   const handlePlayClick = (item, type) => {
@@ -92,7 +92,7 @@ export default function NewReleasesPage() {
                 </BreadcrumbItem>
                 <BreadcrumbSeparator className="hidden md:block" />
                 <BreadcrumbItem>
-                  <BreadcrumbPage>New Releases</BreadcrumbPage>
+                  <BreadcrumbPage>Playlists</BreadcrumbPage>
                 </BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumb>
@@ -102,9 +102,9 @@ export default function NewReleasesPage() {
         <div className="flex-1 overflow-y-auto p-6">
           <div className="space-y-6">
             <div>
-              <h1 className="text-4xl font-bold mb-2">New Releases</h1>
+              <h1 className="text-4xl font-bold mb-2">Trending Playlists</h1>
               <p className="text-muted-foreground">
-                Discover the latest music releases and trending playlists
+                Discover the most popular and trending playlists right now
               </p>
             </div>
 
@@ -112,21 +112,21 @@ export default function NewReleasesPage() {
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6">
                 {Array.from({ length: 24 }).map((_, index) => (
                   <div key={index} className="space-y-3">
-                    <div className="bg-muted animate-pulse rounded-lg aspect-square" />
-                    <div className="bg-muted animate-pulse h-4 rounded" />
-                    <div className="bg-muted animate-pulse h-3 rounded w-2/3" />
+                    <div className="bg-gray-300 animate-pulse rounded-lg aspect-square" />
+                    <div className="bg-gray-300 animate-pulse h-4 rounded" />
+                    <div className="bg-gray-300 animate-pulse h-3 rounded w-2/3" />
                   </div>
                 ))}
               </div>
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6">
-                {newReleases.map((playlist) => (
+                {playlists.map((playlist) => (
                   <div
                     key={playlist.id}
                     className="group cursor-pointer hover:scale-105 transition-transform"
                     onClick={() => handleCardClick(playlist)}
                   >
-                    <div className="relative rounded-lg aspect-square overflow-hidden mb-3 bg-gradient-to-br from-purple-500 to-pink-500">
+                    <div className="relative rounded-lg aspect-square overflow-hidden mb-3 bg-gradient-to-br from-orange-500 to-red-500">
                       {playlist.image?.[2]?.url || playlist.image?.[1]?.url || playlist.image?.[0]?.url ? (
                         <img
                           src={playlist.image?.[2]?.url || playlist.image?.[1]?.url || playlist.image?.[0]?.url}
@@ -171,11 +171,14 @@ export default function NewReleasesPage() {
               </div>
             )}
 
-            {!loading && newReleases.length === 0 && (
+            {!loading && playlists.length === 0 && (
               <div className="text-center py-12">
-                <p className="text-muted-foreground">No new releases found</p>
+                <p className="text-muted-foreground">No playlists found</p>
               </div>
             )}
+
+            {/* Bottom padding to prevent content being hidden behind music player */}
+            <div className="pb-24" />
           </div>
         </div>
       </SidebarInset>

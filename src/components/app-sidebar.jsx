@@ -70,6 +70,10 @@ const data = {
           url: "/music/library/albums",
         },
         {
+          title: "Playlists",
+          url: "/music/library/playlists",
+        },
+        {
           title: "Artists",
           url: "/music/library/artists",
         },
@@ -109,11 +113,6 @@ const data = {
       name: "Favorites",
       url: "/music/favorites",
       icon: Heart,
-    },
-    {
-      name: "Liked Playlists",
-      url: "/music/liked-playlists",
-      icon: ListMusic,
     },
     {
       name: "Radio Stations",

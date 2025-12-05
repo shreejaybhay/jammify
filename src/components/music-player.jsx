@@ -75,10 +75,10 @@ export function MusicPlayer({ currentSong, playlist = [], onSongChange }) {
       // Add a small delay to prevent AbortError
       const playPromise = audio.play();
       if (playPromise !== undefined) {
-        playPromise.catch(error => {
+        playPromise.catch((error) => {
           // Handle the AbortError gracefully
-          if (error.name !== 'AbortError') {
-            console.error('Audio play error:', error);
+          if (error.name !== "AbortError") {
+            console.error("Audio play error:", error);
           }
         });
       }
@@ -142,43 +142,45 @@ export function MusicPlayer({ currentSong, playlist = [], onSongChange }) {
   if (!currentSong) return null;
 
   return (
-    <div className="fixed bottom-0 left-64 right-0 bg-background border-t border-border p-3 z-50">
+    <div className="fixed bottom-0 left-0 right-0 md:left-64 bg-background border-t border-border z-50">
       <audio ref={audioRef} />
 
-      <div className="flex items-center gap-4 w-full">
-        {/* Song Info */}
-        <div className="flex items-center gap-3 min-w-0 flex-1">
-          <div className="w-12 h-12 rounded bg-gradient-to-br from-purple-500 to-pink-500 flex-shrink-0">
-            {currentSong.image?.[0]?.url ? (
-              <img
-                src={currentSong.image[0].url}
-                alt={currentSong.name}
-                className="w-full h-full object-cover rounded"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <Play className="w-4 h-4 opacity-50 text-white" />
-              </div>
-            )}
+      {/* Mobile Layout */}
+      <div className="block md:hidden">
+        {/* Top row: Song info and main controls */}
+        <div className="flex items-center justify-between p-3 pb-2">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            <div className="w-10 h-10 rounded bg-gradient-to-br from-purple-500 to-pink-500 flex-shrink-0">
+              {currentSong.image?.[0]?.url ? (
+                <img
+                  src={currentSong.image[0].url}
+                  alt={currentSong.name}
+                  className="w-full h-full object-cover rounded"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <Play className="w-3 h-3 opacity-50 text-white" />
+                </div>
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="font-medium truncate text-sm">
+                {decodeHtmlEntities(currentSong.name)}
+              </p>
+              <p className="text-xs text-muted-foreground truncate">
+                {currentSong.artists?.primary?.[0]?.name || "Unknown Artist"}
+              </p>
+            </div>
           </div>
-          <div className="min-w-0 flex-1">
-            <p className="font-medium truncate text-sm">
-              {decodeHtmlEntities(currentSong.name)}
-            </p>
-            <p className="text-xs text-muted-foreground truncate">
-              {currentSong.artists?.primary?.[0]?.name || "Unknown Artist"}
-            </p>
-          </div>
-        </div>
 
-        {/* Controls */}
-        <div className="flex flex-col items-center gap-2 flex-1 max-w-md">
-          <div className="flex items-center gap-2">
+          {/* Mobile Controls */}
+          <div className="flex items-center gap-1">
             <Button
               variant="ghost"
               size="sm"
               onClick={handlePrevious}
               disabled={playlist.length === 0}
+              className="h-8 w-8 p-0"
             >
               <SkipBack className="w-4 h-4" />
             </Button>
@@ -187,7 +189,7 @@ export function MusicPlayer({ currentSong, playlist = [], onSongChange }) {
               variant="default"
               size="sm"
               onClick={togglePlayPause}
-              className="rounded-full w-8 h-8"
+              className="rounded-full w-10 h-10 p-0"
             >
               {isPlaying ? (
                 <Pause className="w-4 h-4" />
@@ -201,14 +203,17 @@ export function MusicPlayer({ currentSong, playlist = [], onSongChange }) {
               size="sm"
               onClick={handleNext}
               disabled={playlist.length === 0}
+              className="h-8 w-8 p-0"
             >
               <SkipForward className="w-4 h-4" />
             </Button>
           </div>
+        </div>
 
-          {/* Progress Bar */}
+        {/* Bottom row: Progress bar */}
+        <div className="px-3 pb-3">
           <div className="flex items-center gap-2 w-full">
-            <span className="text-xs text-muted-foreground min-w-[35px]">
+            <span className="text-xs text-muted-foreground min-w-[30px] text-center">
               {formatTime(currentTime)}
             </span>
             <Slider
@@ -218,22 +223,105 @@ export function MusicPlayer({ currentSong, playlist = [], onSongChange }) {
               onValueChange={handleSeek}
               className="flex-1"
             />
-            <span className="text-xs text-muted-foreground min-w-[35px]">
+            <span className="text-xs text-muted-foreground min-w-[30px] text-center">
               {formatTime(duration)}
             </span>
           </div>
         </div>
+      </div>
 
-        {/* Volume */}
-        <div className="flex items-center gap-2 flex-1 justify-end">
-          <Volume2 className="w-4 h-4" />
-          <Slider
-            value={[volume]}
-            max={1}
-            step={0.1}
-            onValueChange={handleVolumeChange}
-            className="w-24"
-          />
+      {/* Desktop Layout */}
+      <div className="hidden md:block p-3">
+        <div className="flex items-center gap-4 w-full">
+          {/* Song Info */}
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            <div className="w-12 h-12 rounded bg-gradient-to-br from-purple-500 to-pink-500 flex-shrink-0">
+              {currentSong.image?.[0]?.url ? (
+                <img
+                  src={currentSong.image[0].url}
+                  alt={currentSong.name}
+                  className="w-full h-full object-cover rounded"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <Play className="w-4 h-4 opacity-50 text-white" />
+                </div>
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="font-medium truncate text-sm">
+                {decodeHtmlEntities(currentSong.name)}
+              </p>
+              <p className="text-xs text-muted-foreground truncate">
+                {currentSong.artists?.primary?.[0]?.name || "Unknown Artist"}
+              </p>
+            </div>
+          </div>
+
+          {/* Controls */}
+          <div className="flex flex-col items-center gap-2 flex-1 max-w-md">
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handlePrevious}
+                disabled={playlist.length === 0}
+              >
+                <SkipBack className="w-4 h-4" />
+              </Button>
+
+              <Button
+                variant="default"
+                size="sm"
+                onClick={togglePlayPause}
+                className="rounded-full w-8 h-8"
+              >
+                {isPlaying ? (
+                  <Pause className="w-4 h-4" />
+                ) : (
+                  <Play className="w-4 h-4 ml-0.5" />
+                )}
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleNext}
+                disabled={playlist.length === 0}
+              >
+                <SkipForward className="w-4 h-4" />
+              </Button>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="flex items-center gap-2 w-full">
+              <span className="text-xs text-muted-foreground min-w-[35px]">
+                {formatTime(currentTime)}
+              </span>
+              <Slider
+                value={[currentTime]}
+                max={duration || 100}
+                step={1}
+                onValueChange={handleSeek}
+                className="flex-1"
+              />
+              <span className="text-xs text-muted-foreground min-w-[35px]">
+                {formatTime(duration)}
+              </span>
+            </div>
+          </div>
+
+          {/* Volume */}
+          <div className="flex items-center gap-2 flex-1 justify-end">
+            <Volume2 className="w-4 h-4" />
+            <Slider
+              value={[volume]}
+              max={1}
+              step={0.1}
+              onValueChange={handleVolumeChange}
+              className="w-24"
+            />
+          </div>
         </div>
       </div>
     </div>

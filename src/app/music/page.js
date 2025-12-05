@@ -27,12 +27,18 @@ export default function MusicPage() {
   const router = useRouter();
   const [currentlyPlaying, setCurrentlyPlaying] = useState(null);
   const [newReleases, setNewReleases] = useState([]);
+  const [trendingPlaylists, setTrendingPlaylists] = useState([]);
+  const [topHitsPlaylists, setTopHitsPlaylists] = useState([]);
+  const [englishTopPlaylists, setEnglishTopPlaylists] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [trendingLoading, setTrendingLoading] = useState(true);
+  const [topHitsLoading, setTopHitsLoading] = useState(true);
+  const [englishTopLoading, setEnglishTopLoading] = useState(true);
   const [playlistColors, setPlaylistColors] = useState({});
-  
+
   // Initialize liked songs hook to show count
   const { likedSongs, getLikedCount } = useLikedSongs('shree jaybhay');
-  
+
   // Initialize liked playlists hook
   const { likedPlaylists, loading: playlistsLoading } = useLikedPlaylists('shree jaybhay');
 
@@ -53,7 +59,58 @@ export default function MusicPage() {
       }
     };
 
+    const fetchTrendingPlaylists = async () => {
+      try {
+        setTrendingLoading(true);
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/search/playlists?query=trending&page=0&limit=6`);
+        const data = await response.json();
+
+        if (data.success && data.data.results) {
+          setTrendingPlaylists(data.data.results);
+        }
+      } catch (error) {
+        console.error('Error fetching trending playlists:', error);
+      } finally {
+        setTrendingLoading(false);
+      }
+    };
+
+    const fetchTopHitsPlaylists = async () => {
+      try {
+        setTopHitsLoading(true);
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/search/playlists?query=top%20hits&page=0&limit=6`);
+        const data = await response.json();
+
+        if (data.success && data.data.results) {
+          setTopHitsPlaylists(data.data.results);
+        }
+      } catch (error) {
+        console.error('Error fetching top hits playlists:', error);
+      } finally {
+        setTopHitsLoading(false);
+      }
+    };
+
+    const fetchEnglishTopPlaylists = async () => {
+      try {
+        setEnglishTopLoading(true);
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/search/playlists?query=english%20top&page=0&limit=6`);
+        const data = await response.json();
+
+        if (data.success && data.data.results) {
+          setEnglishTopPlaylists(data.data.results);
+        }
+      } catch (error) {
+        console.error('Error fetching english top playlists:', error);
+      } finally {
+        setEnglishTopLoading(false);
+      }
+    };
+
     fetchNewReleases();
+    fetchTrendingPlaylists();
+    fetchTopHitsPlaylists();
+    fetchEnglishTopPlaylists();
   }, []);
 
   const handlePlayClick = (item, type) => {
@@ -167,8 +224,8 @@ export default function MusicPage() {
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset>
-        <header className="sticky top-0 z-50 flex h-16 shrink-0 items-center gap-2 border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
-          <div className="flex items-center gap-2 px-4">
+        <header className="sticky top-0 z-50 flex h-16 shrink-0 items-center gap-2 border-b bg-background transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+          <div className="flex items-center gap-2 px-3 md:px-4">
             <SidebarTrigger className="-ml-1" />
             <Separator orientation="vertical" className="mr-2 data-[orientation=vertical]:h-4" />
             <Breadcrumb>
@@ -187,13 +244,13 @@ export default function MusicPage() {
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-8">
+        <div className="flex-1 overflow-y-auto p-3 md:p-6 space-y-6 md:space-y-8">
 
           {/* Quick Access Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 md:gap-3">
             {/* Liked Songs */}
             <div
-              className="rounded-lg p-4 relative overflow-hidden cursor-pointer transition-all duration-300 flex items-center gap-3 h-20 group"
+              className="rounded-lg p-3 md:p-4 relative overflow-hidden cursor-pointer transition-all duration-300 flex items-center gap-2 md:gap-3 h-16 md:h-20 group"
               style={{
                 backgroundColor: 'rgba(147, 51, 234, 0.15)', // Purple ambient
                 '--hover-color': 'rgba(147, 51, 234, 0.25)'
@@ -216,7 +273,7 @@ export default function MusicPage() {
               <div className="min-w-0 flex-1">
                 <h3 className="font-semibold text-sm text-foreground">Liked Songs</h3>
               </div>
-              
+
               {/* Play button overlay */}
               <div className="opacity-0 group-hover:opacity-100 transition-opacity">
                 <Button
@@ -236,10 +293,10 @@ export default function MusicPage() {
             {playlistsLoading ? (
               // Loading skeleton for playlists
               Array.from({ length: 3 }).map((_, index) => (
-                <div key={`skeleton-${index}`} className="bg-muted/50 rounded-lg p-4 flex items-center gap-3 h-20 animate-pulse">
-                  <div className="w-12 h-12 bg-gray-300 rounded-sm shrink-0" />
+                <div key={`skeleton-${index}`} className="bg-muted/50 rounded-lg p-3 md:p-4 flex items-center gap-2 md:gap-3 h-16 md:h-20 animate-pulse">
+                  <div className="w-10 h-10 md:w-12 md:h-12 bg-muted rounded-sm shrink-0" />
                   <div className="min-w-0 flex-1">
-                    <div className="h-4 bg-gray-300 rounded w-3/4" />
+                    <div className="h-3 md:h-4 bg-muted rounded w-3/4" />
                   </div>
                 </div>
               ))
@@ -249,11 +306,11 @@ export default function MusicPage() {
                 const rgbValues = dominantColor.match(/\d+/g);
                 const ambientColor = rgbValues ? `rgba(${rgbValues[0]}, ${rgbValues[1]}, ${rgbValues[2]}, 0.15)` : 'rgba(59,130,246,0.15)';
                 const hoverColor = rgbValues ? `rgba(${rgbValues[0]}, ${rgbValues[1]}, ${rgbValues[2]}, 0.25)` : 'rgba(59,130,246,0.25)';
-                
+
                 return (
                   <div
                     key={playlist.playlistId}
-                    className="rounded-lg p-4 relative overflow-hidden cursor-pointer transition-all duration-300 flex items-center gap-3 h-20 group"
+                    className="rounded-lg p-3 md:p-4 relative overflow-hidden cursor-pointer transition-all duration-300 flex items-center gap-2 md:gap-3 h-16 md:h-20 group"
                     style={{
                       backgroundColor: ambientColor,
                       '--hover-color': hoverColor
@@ -266,7 +323,7 @@ export default function MusicPage() {
                     }}
                     onClick={() => router.push(`/music/playlist/${playlist.playlistId}?songCount=${playlist.songCount || 50}`)}
                   >
-                    <div className="w-12 h-12 rounded-sm shrink-0 shadow-lg overflow-hidden">
+                    <div className="w-10 h-10 md:w-12 md:h-12 rounded-sm shrink-0 shadow-lg overflow-hidden">
                       {playlist.image?.[2]?.url || playlist.image?.[1]?.url || playlist.image?.[0]?.url ? (
                         <img
                           src={playlist.image?.[2]?.url || playlist.image?.[1]?.url || playlist.image?.[0]?.url}
@@ -278,33 +335,33 @@ export default function MusicPage() {
                           }}
                         />
                       ) : null}
-                      <div 
-                        className="w-full h-full flex items-center justify-center" 
-                        style={{ 
+                      <div
+                        className="w-full h-full flex items-center justify-center"
+                        style={{
                           display: playlist.image?.[0]?.url ? 'none' : 'flex',
                           background: `linear-gradient(135deg, ${dominantColor}, ${dominantColor.replace('rgb', 'rgba').replace(')', ', 0.8)')})`
                         }}
                       >
-                        <List className="w-6 h-6 text-white" />
+                        <List className="w-5 h-5 md:w-6 md:h-6 text-white" />
                       </div>
                     </div>
                     <div className="min-w-0 flex-1">
-                      <h3 className="font-semibold text-sm text-foreground truncate">
+                      <h3 className="font-semibold text-xs md:text-sm text-foreground truncate">
                         {playlist.playlistName}
                       </h3>
                     </div>
-                    
+
                     {/* Play button overlay */}
-                    <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity hidden md:block">
                       <Button
                         size="sm"
-                        className="rounded-full w-10 h-10 bg-green-500 hover:bg-green-600 text-black shadow-lg"
+                        className="rounded-full w-8 h-8 md:w-10 md:h-10 bg-green-500 hover:bg-green-600 text-black shadow-lg"
                         onClick={(e) => {
                           e.stopPropagation();
                           handlePlayClick(playlist, "playlist");
                         }}
                       >
-                        <Play className="w-4 h-4 ml-0.5" />
+                        <Play className="w-3 h-3 md:w-4 md:h-4 ml-0.5" />
                       </Button>
                     </div>
                   </div>
@@ -314,26 +371,27 @@ export default function MusicPage() {
           </div>
 
           {/* It's New Music Friday Section */}
-          <div className="space-y-4">
+          <div className="space-y-3 md:space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold">It's New Music Friday!</h2>
+              <h2 className="text-xl md:text-2xl font-bold">It's New Music Friday!</h2>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleShowAll}
+                className="text-xs md:text-sm"
               >
                 Show all
               </Button>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 md:gap-4">
               {loading ? (
                 // Loading skeleton
                 Array.from({ length: 6 }).map((_, index) => (
                   <div key={index} className="space-y-2">
-                    <div className="bg-gray-300 animate-pulse rounded-lg aspect-square" />
-                    <div className="bg-gray-300 animate-pulse h-4 rounded" />
-                    <div className="bg-gray-300 animate-pulse h-3 rounded w-2/3" />
+                    <div className="bg-muted animate-pulse rounded-lg aspect-square" />
+                    <div className="bg-muted animate-pulse h-4 rounded" />
+                    <div className="bg-muted animate-pulse h-3 rounded w-2/3" />
                   </div>
                 ))
               ) : (
@@ -380,6 +438,206 @@ export default function MusicPage() {
             </div>
           </div>
 
+          {/* Trending Playlists Section */}
+          <div className="space-y-3 md:space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl md:text-2xl font-bold">Trending Playlists</h2>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => router.push('/music/discover/playlists')}
+                className="text-xs md:text-sm"
+              >
+                Show all
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 md:gap-4">
+              {trendingLoading ? (
+                // Loading skeleton
+                Array.from({ length: 6 }).map((_, index) => (
+                  <div key={index} className="space-y-2">
+                    <div className="bg-muted animate-pulse rounded-lg aspect-square" />
+                    <div className="bg-muted animate-pulse h-4 rounded" />
+                    <div className="bg-muted animate-pulse h-3 rounded w-2/3" />
+                  </div>
+                ))
+              ) : (
+                trendingPlaylists.map((playlist) => (
+                  <div
+                    key={playlist.id}
+                    className="group cursor-pointer hover:scale-105 transition-transform"
+                    onClick={() => handleCardClick(playlist, "playlist")}
+                  >
+                    <div className="relative rounded-lg aspect-square overflow-hidden mb-3">
+                      <img
+                        src={playlist.image?.[2]?.url || playlist.image?.[1]?.url || playlist.image?.[0]?.url}
+                        alt={playlist.name}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.target.src = '/placeholder-music.jpg';
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <Button
+                        size="icon"
+                        className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-green-500 hover:bg-green-600 rounded-full shadow-lg"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handlePlayClick(playlist, "playlist");
+                        }}
+                      >
+                        <Play className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium leading-tight line-clamp-2 text-foreground">
+                        {playlist.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {playlist.songCount} songs
+                      </p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Top Hits Playlists Section */}
+          <div className="space-y-3 md:space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl md:text-2xl font-bold">Top Hits Playlists</h2>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => router.push('/music/discover/top-hits')}
+                className="text-xs md:text-sm"
+              >
+                Show all
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 md:gap-4">
+              {topHitsLoading ? (
+                // Loading skeleton
+                Array.from({ length: 6 }).map((_, index) => (
+                  <div key={index} className="space-y-2">
+                    <div className="bg-muted animate-pulse rounded-lg aspect-square" />
+                    <div className="bg-muted animate-pulse h-4 rounded" />
+                    <div className="bg-muted animate-pulse h-3 rounded w-2/3" />
+                  </div>
+                ))
+              ) : (
+                topHitsPlaylists.map((playlist) => (
+                  <div
+                    key={playlist.id}
+                    className="group cursor-pointer hover:scale-105 transition-transform"
+                    onClick={() => handleCardClick(playlist, "playlist")}
+                  >
+                    <div className="relative rounded-lg aspect-square overflow-hidden mb-3">
+                      <img
+                        src={playlist.image?.[2]?.url || playlist.image?.[1]?.url || playlist.image?.[0]?.url}
+                        alt={playlist.name}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.target.src = '/placeholder-music.jpg';
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <Button
+                        size="icon"
+                        className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-green-500 hover:bg-green-600 rounded-full shadow-lg"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handlePlayClick(playlist, "playlist");
+                        }}
+                      >
+                        <Play className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium leading-tight line-clamp-2 text-foreground">
+                        {playlist.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {playlist.songCount} songs
+                      </p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* English Top Playlists Section */}
+          <div className="space-y-3 md:space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl md:text-2xl font-bold">English Top Playlists</h2>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => router.push('/music/discover/english-top')}
+                className="text-xs md:text-sm"
+              >
+                Show all
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 md:gap-4">
+              {englishTopLoading ? (
+                // Loading skeleton
+                Array.from({ length: 6 }).map((_, index) => (
+                  <div key={index} className="space-y-2">
+                    <div className="bg-muted animate-pulse rounded-lg aspect-square" />
+                    <div className="bg-muted animate-pulse h-4 rounded" />
+                    <div className="bg-muted animate-pulse h-3 rounded w-2/3" />
+                  </div>
+                ))
+              ) : (
+                englishTopPlaylists.map((playlist) => (
+                  <div
+                    key={playlist.id}
+                    className="group cursor-pointer hover:scale-105 transition-transform"
+                    onClick={() => handleCardClick(playlist, "playlist")}
+                  >
+                    <div className="relative rounded-lg aspect-square overflow-hidden mb-3">
+                      <img
+                        src={playlist.image?.[2]?.url || playlist.image?.[1]?.url || playlist.image?.[0]?.url}
+                        alt={playlist.name}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.target.src = '/placeholder-music.jpg';
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <Button
+                        size="icon"
+                        className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-green-500 hover:bg-green-600 rounded-full shadow-lg"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handlePlayClick(playlist, "playlist");
+                        }}
+                      >
+                        <Play className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium leading-tight line-clamp-2 text-foreground">
+                        {playlist.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {playlist.songCount} songs
+                      </p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Bottom padding to prevent content being hidden behind music player */}
+          <div className="pb-24" />
 
         </div>
       </SidebarInset>

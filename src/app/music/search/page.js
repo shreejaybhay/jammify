@@ -69,6 +69,93 @@ export default function SearchPage() {
           artists: data.data.artists || { results: [] },
           playlists: data.data.playlists || { results: [] }
         };
+
+        // Enhance artists section by adding song artists if they're not already included
+        if (transformedData.songs?.results?.length > 0) {
+          const existingArtistNames = new Set(
+            transformedData.artists.results.map(artist =>
+              artist.title?.toLowerCase() || artist.name?.toLowerCase()
+            )
+          );
+
+          // Get unique artists from top songs with proper IDs by fetching detailed song info
+          const songArtists = [];
+
+          // Process top 3 songs to extract their artists
+          for (const song of transformedData.songs.results.slice(0, 3)) {
+            try {
+              // Fetch detailed song info to get proper artist data with IDs
+              const songResponse = await fetch(`https://jiosaavn-api-blush.vercel.app/api/songs/${song.id}`);
+              const songData = await songResponse.json();
+
+              if (songData.success && songData.data?.[0]?.artists?.primary) {
+                // Use the detailed artist information with real IDs
+                songData.data[0].artists.primary.forEach(artist => {
+                  const artistName = artist.name;
+                  if (artistName && !existingArtistNames.has(artistName.toLowerCase())) {
+                    songArtists.push({
+                      id: artist.id, // Real artist ID from detailed API
+                      title: artistName,
+                      name: artistName,
+                      type: 'artist',
+                      image: artist.image || song.image || [],
+                      isSongArtist: true,
+                      needsSearch: false // We have the real ID
+                    });
+                    existingArtistNames.add(artistName.toLowerCase());
+                  }
+                });
+              } else {
+                // Fallback to parsing primaryArtists string if detailed fetch fails
+                const artistName = getArtistNames(song);
+                if (artistName && artistName !== 'Unknown Artist') {
+                  const artists = artistName.split(',').map(name => name.trim());
+                  artists.forEach(name => {
+                    if (!existingArtistNames.has(name.toLowerCase())) {
+                      songArtists.push({
+                        id: `search-${name.toLowerCase().replace(/\s+/g, '-')}`,
+                        title: name,
+                        name: name,
+                        type: 'artist',
+                        image: song.image || [],
+                        isSongArtist: true,
+                        needsSearch: true // Flag that we need to search for real ID
+                      });
+                      existingArtistNames.add(name.toLowerCase());
+                    }
+                  });
+                }
+              }
+            } catch (error) {
+              console.error('Error fetching song details for artist extraction:', error);
+              // Fallback to basic artist extraction
+              const artistName = getArtistNames(song);
+              if (artistName && artistName !== 'Unknown Artist') {
+                const artists = artistName.split(',').map(name => name.trim());
+                artists.forEach(name => {
+                  if (!existingArtistNames.has(name.toLowerCase())) {
+                    songArtists.push({
+                      id: `search-${name.toLowerCase().replace(/\s+/g, '-')}`,
+                      title: name,
+                      name: name,
+                      type: 'artist',
+                      image: song.image || [],
+                      isSongArtist: true,
+                      needsSearch: true
+                    });
+                    existingArtistNames.add(name.toLowerCase());
+                  }
+                });
+              }
+            }
+          }
+
+          // Add song artists to the beginning of artists array
+          if (songArtists.length > 0) {
+            transformedData.artists.results = [...songArtists, ...transformedData.artists.results];
+          }
+        }
+
         setSearchResults(transformedData);
       } else {
         console.error('Search failed:', data.message);
@@ -117,7 +204,42 @@ export default function SearchPage() {
     playSong(song, playlist);
   };
 
-  const handleArtistClick = (artistId) => {
+  const handleArtistClick = async (artistId, artistName = null) => {
+    // If it's a generated ID (starts with 'search-'), we need to find the real artist ID
+    if (artistId.startsWith('search-') && artistName) {
+      try {
+        // Search for the artist to get their real ID
+        const response = await fetch(`https://jiosaavn-api-blush.vercel.app/api/search?query=${encodeURIComponent(artistName)}`);
+        const data = await response.json();
+
+        if (data.success && data.data.artists?.results?.length > 0) {
+          // Find the exact artist match
+          const exactMatch = data.data.artists.results.find(artist =>
+            artist.title?.toLowerCase() === artistName.toLowerCase() ||
+            artist.name?.toLowerCase() === artistName.toLowerCase()
+          );
+
+          if (exactMatch && exactMatch.id) {
+            router.push(`/music/artist/${exactMatch.id}`);
+            return;
+          }
+
+          // If no exact match, use the first result
+          if (data.data.artists.results[0]?.id) {
+            router.push(`/music/artist/${data.data.artists.results[0].id}`);
+            return;
+          }
+        }
+      } catch (error) {
+        console.error('Error searching for artist:', error);
+      }
+
+      // Fallback: show a message or redirect to search
+      console.log(`Could not find artist page for: ${artistName}`);
+      return;
+    }
+
+    // Use the provided ID directly
     router.push(`/music/artist/${artistId}`);
   };
 
@@ -169,7 +291,7 @@ export default function SearchPage() {
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset>
-        <header className="sticky top-0 z-50 flex h-16 shrink-0 items-center gap-2 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+        <header className="sticky top-0 z-50 flex h-16 shrink-0 items-center gap-2 border-b bg-background transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
           <div className="flex items-center gap-2 px-4">
             <SidebarTrigger className="-ml-1" />
             <Separator orientation="vertical" className="mr-2 data-[orientation=vertical]:h-4" />
@@ -333,10 +455,12 @@ export default function SearchPage() {
                                   )}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <p className="font-medium truncate">
+                                  <p className={`font-medium truncate ${isCurrentSong ? 'text-green-500' : ''
+                                    }`}>
                                     {decodeHtmlEntities(song.title || song.name)}
                                   </p>
-                                  <p className="text-sm text-muted-foreground truncate">
+                                  <p className={`text-sm truncate ${isCurrentSong ? 'text-green-400' : 'text-muted-foreground'
+                                    }`}>
                                     {getArtistNames(song)}
                                   </p>
                                 </div>
@@ -349,17 +473,33 @@ export default function SearchPage() {
                                     onClick={async (e) => {
                                       e.stopPropagation();
                                       try {
+                                        // Fetch detailed song info to get complete data for liking
+                                        let detailedSong = song;
+
+                                        if (!song.downloadUrl && song.id) {
+                                          const response = await fetch(`https://jiosaavn-api-blush.vercel.app/api/songs/${song.id}`);
+                                          const data = await response.json();
+
+                                          if (data.success && data.data && data.data.length > 0) {
+                                            detailedSong = data.data[0];
+                                          }
+                                        }
+
                                         // Create proper song data structure for the like function
                                         const songData = {
-                                          id: song.id,
-                                          name: song.title || song.name,
-                                          title: song.title || song.name,
-                                          artists: song.artists || { primary: [] },
-                                          primaryArtists: song.primaryArtists || getArtistNames(song),
-                                          image: song.image || [],
-                                          album: song.album || '',
-                                          duration: song.duration || 0,
-                                          url: song.url || '',
+                                          id: detailedSong.id,
+                                          name: detailedSong.name || detailedSong.title,
+                                          title: detailedSong.name || detailedSong.title,
+                                          artists: detailedSong.artists || { primary: [] },
+                                          primaryArtists: detailedSong.primaryArtists || getArtistNames(detailedSong),
+                                          album: detailedSong.album || { id: '', name: song.album || '' },
+                                          duration: detailedSong.duration || 0,
+                                          image: detailedSong.image || [],
+                                          releaseDate: detailedSong.releaseDate || '',
+                                          language: detailedSong.language || '',
+                                          playCount: detailedSong.playCount || 0,
+                                          downloadUrl: detailedSong.downloadUrl || [],
+                                          url: detailedSong.url || '',
                                           type: 'song'
                                         };
                                         await toggleLike(songData);
@@ -397,20 +537,41 @@ export default function SearchPage() {
                           <div
                             key={artist.id || index}
                             className="text-center group cursor-pointer"
-                            onClick={() => handleArtistClick(artist.id)}
+                            onClick={() => handleArtistClick(artist.id, artist.title || artist.name)}
                           >
                             <div className="w-full aspect-square rounded-full bg-muted mb-3 overflow-hidden">
-                              {artist.image?.[2]?.url ? (
-                                <img
-                                  src={artist.image[2].url}
-                                  alt={artist.title}
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-500 to-pink-500">
-                                  <Play className="w-8 h-8 text-white/70" />
+                              {(() => {
+                                // Try different image sizes: high quality first, then medium, then low
+                                const imageUrl = artist.image?.[2]?.url || artist.image?.[1]?.url || artist.image?.[0]?.url;
+
+                                if (imageUrl) {
+                                  return (
+                                    <img
+                                      src={imageUrl}
+                                      alt={artist.title}
+                                      className="w-full h-full object-cover"
+                                      onError={(e) => {
+                                        // If image fails to load, show gradient fallback
+                                        e.target.style.display = 'none';
+                                        e.target.nextSibling.style.display = 'flex';
+                                      }}
+                                    />
+                                  );
+                                }
+
+                                return (
+                                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-500 to-purple-600">
+                                    <div className="text-white text-2xl font-bold">
+                                      {artist.title?.charAt(0)?.toUpperCase() || 'A'}
+                                    </div>
+                                  </div>
+                                );
+                              })()}
+                              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-500 to-purple-600" style={{ display: 'none' }}>
+                                <div className="text-white text-2xl font-bold">
+                                  {artist.title?.charAt(0)?.toUpperCase() || 'A'}
                                 </div>
-                              )}
+                              </div>
                             </div>
                             <p className="font-medium truncate text-sm">
                               {decodeHtmlEntities(artist.title)}
@@ -529,10 +690,12 @@ export default function SearchPage() {
                               )}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="font-medium truncate">
+                              <p className={`font-medium truncate ${isCurrentSong ? 'text-green-500' : ''
+                                }`}>
                                 {decodeHtmlEntities(song.title)}
                               </p>
-                              <p className="text-sm text-muted-foreground truncate">
+                              <p className={`text-sm truncate ${isCurrentSong ? 'text-green-400' : 'text-muted-foreground'
+                                }`}>
                                 {getArtistNames(song)}
                               </p>
                             </div>
@@ -545,17 +708,33 @@ export default function SearchPage() {
                                 onClick={async (e) => {
                                   e.stopPropagation();
                                   try {
+                                    // Fetch detailed song info to get complete data for liking
+                                    let detailedSong = song;
+
+                                    if (!song.downloadUrl && song.id) {
+                                      const response = await fetch(`https://jiosaavn-api-blush.vercel.app/api/songs/${song.id}`);
+                                      const data = await response.json();
+
+                                      if (data.success && data.data && data.data.length > 0) {
+                                        detailedSong = data.data[0];
+                                      }
+                                    }
+
                                     // Create proper song data structure for the like function
                                     const songData = {
-                                      id: song.id,
-                                      name: song.title || song.name,
-                                      title: song.title || song.name,
-                                      artists: song.artists || { primary: [] },
-                                      primaryArtists: song.primaryArtists || getArtistNames(song),
-                                      image: song.image || [],
-                                      album: song.album || '',
-                                      duration: song.duration || 0,
-                                      url: song.url || '',
+                                      id: detailedSong.id,
+                                      name: detailedSong.name || detailedSong.title,
+                                      title: detailedSong.name || detailedSong.title,
+                                      artists: detailedSong.artists || { primary: [] },
+                                      primaryArtists: detailedSong.primaryArtists || getArtistNames(detailedSong),
+                                      album: detailedSong.album || { id: '', name: song.album || '' },
+                                      duration: detailedSong.duration || 0,
+                                      image: detailedSong.image || [],
+                                      releaseDate: detailedSong.releaseDate || '',
+                                      language: detailedSong.language || '',
+                                      playCount: detailedSong.playCount || 0,
+                                      downloadUrl: detailedSong.downloadUrl || [],
+                                      url: detailedSong.url || '',
                                       type: 'song'
                                     };
                                     await toggleLike(songData);
