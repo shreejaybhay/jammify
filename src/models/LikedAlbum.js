@@ -1,9 +1,10 @@
 import mongoose from 'mongoose';
 
 const likedAlbumSchema = new mongoose.Schema({
-    // User identification
+    // User reference
     userId: {
-        type: String,
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
         required: true,
         index: true
     },
