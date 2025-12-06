@@ -38,6 +38,34 @@ export function useLikedSongs(userId) {
       return { success: false, error: 'User ID is required' };
     }
     
+    // Optimistic update - update UI immediately
+    const wasLiked = likedSongIds.has(songData.id);
+    const willBeLiked = !wasLiked;
+    
+    if (willBeLiked) {
+      // Optimistically add to liked songs
+      setLikedSongIds(prev => new Set([...prev, songData.id]));
+      setLikedSongs(prev => [{
+        songId: songData.id,
+        songName: songData.name,
+        artists: songData.artists?.primary || [],
+        album: songData.album,
+        duration: songData.duration,
+        image: songData.image,
+        releaseDate: songData.releaseDate,
+        language: songData.language,
+        likedAt: new Date().toISOString()
+      }, ...prev]);
+    } else {
+      // Optimistically remove from liked songs
+      setLikedSongIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(songData.id);
+        return newSet;
+      });
+      setLikedSongs(prev => prev.filter(song => song.songId !== songData.id));
+    }
+    
     try {
       const response = await fetch('/api/liked-songs', {
         method: 'POST',
@@ -53,9 +81,21 @@ export function useLikedSongs(userId) {
       const result = await response.json();
       
       if (result.success) {
-        // Update local state
-        if (result.liked) {
-          // Song was liked
+        // Server confirmed the operation, no need to update state again
+        // as we already did optimistic update
+        return result;
+      } else {
+        // Server operation failed, revert optimistic update
+        if (willBeLiked) {
+          // Revert the like
+          setLikedSongIds(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(songData.id);
+            return newSet;
+          });
+          setLikedSongs(prev => prev.filter(song => song.songId !== songData.id));
+        } else {
+          // Revert the unlike
           setLikedSongIds(prev => new Set([...prev, songData.id]));
           setLikedSongs(prev => [{
             songId: songData.id,
@@ -68,28 +108,43 @@ export function useLikedSongs(userId) {
             language: songData.language,
             likedAt: new Date().toISOString()
           }, ...prev]);
-        } else {
-          // Song was unliked
-          setLikedSongIds(prev => {
-            const newSet = new Set(prev);
-            newSet.delete(songData.id);
-            return newSet;
-          });
-          setLikedSongs(prev => prev.filter(song => song.songId !== songData.id));
         }
         
-        return result;
-      } else {
         setError(result.error);
         return result;
       }
     } catch (err) {
+      // Network error, revert optimistic update
+      if (willBeLiked) {
+        // Revert the like
+        setLikedSongIds(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(songData.id);
+          return newSet;
+        });
+        setLikedSongs(prev => prev.filter(song => song.songId !== songData.id));
+      } else {
+        // Revert the unlike
+        setLikedSongIds(prev => new Set([...prev, songData.id]));
+        setLikedSongs(prev => [{
+          songId: songData.id,
+          songName: songData.name,
+          artists: songData.artists?.primary || [],
+          album: songData.album,
+          duration: songData.duration,
+          image: songData.image,
+          releaseDate: songData.releaseDate,
+          language: songData.language,
+          likedAt: new Date().toISOString()
+        }, ...prev]);
+      }
+      
       const errorMsg = 'Failed to toggle like';
       setError(errorMsg);
       console.error('Error toggling like:', err);
       return { success: false, error: errorMsg };
     }
-  }, [userId]);
+  }, [userId, likedSongIds]);
 
   // Check if a song is liked
   const isLiked = useCallback((songId) => {

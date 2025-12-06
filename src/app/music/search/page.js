@@ -6,7 +6,14 @@ import { useSession } from "next-auth/react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, Play, Heart, Pause } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Search, Play, Heart, Pause, MoreVertical, Plus, User, Disc, Share, Download } from "lucide-react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -317,6 +324,253 @@ function SearchPageContent() {
     return 'Unknown Artist';
   };
 
+  const handleAddToPlaylist = (e, song) => {
+    e.stopPropagation();
+    // TODO: Implement add to playlist functionality
+    console.log('Add to playlist:', song.title || song.name);
+  };
+
+  const handleGoToArtist = async (e, song) => {
+    e.stopPropagation();
+
+    try {
+      // First, try to get detailed song info which has proper artist data with IDs
+      let detailedSong = song;
+      if (!song.artists?.primary && song.id) {
+        const response = await fetch(`https://jiosaavn-api-blush.vercel.app/api/songs/${song.id}`);
+        const data = await response.json();
+
+        if (data.success && data.data && data.data.length > 0) {
+          detailedSong = data.data[0];
+        }
+      }
+
+      // Check if we have artist data with IDs
+      if (detailedSong.artists?.primary && detailedSong.artists.primary.length > 0) {
+        const firstArtist = detailedSong.artists.primary[0];
+        if (firstArtist.id) {
+          router.push(`/music/artist/${firstArtist.id}`);
+          return;
+        }
+      }
+
+      // Fallback: search for the artist by name
+      const artistName = getArtistNames(song);
+      if (artistName && artistName !== 'Unknown Artist') {
+        // Try to find the artist ID by searching
+        const searchResponse = await fetch(`https://jiosaavn-api-blush.vercel.app/api/search?query=${encodeURIComponent(artistName)}`);
+        const searchData = await searchResponse.json();
+
+        if (searchData.success && searchData.data.artists?.results?.length > 0) {
+          // Find the exact artist match
+          const exactMatch = searchData.data.artists.results.find(artist =>
+            artist.title?.toLowerCase() === artistName.toLowerCase() ||
+            artist.name?.toLowerCase() === artistName.toLowerCase()
+          );
+
+          if (exactMatch && exactMatch.id) {
+            router.push(`/music/artist/${exactMatch.id}`);
+            return;
+          }
+
+          // If no exact match, use the first result
+          if (searchData.data.artists.results[0]?.id) {
+            router.push(`/music/artist/${searchData.data.artists.results[0].id}`);
+            return;
+          }
+        }
+
+        // Final fallback: redirect to search
+        router.push(`/music/search?q=${encodeURIComponent(artistName)}`);
+      }
+    } catch (error) {
+      console.error('Error navigating to artist:', error);
+      // Fallback to search
+      const artistName = getArtistNames(song);
+      if (artistName && artistName !== 'Unknown Artist') {
+        router.push(`/music/search?q=${encodeURIComponent(artistName)}`);
+      }
+    }
+  };
+
+  const handleGoToAlbum = async (e, song) => {
+    e.stopPropagation();
+
+    try {
+      // First, try to get detailed song info which has proper album data with IDs
+      let detailedSong = song;
+      if (!song.album?.id && song.id) {
+        const response = await fetch(`https://jiosaavn-api-blush.vercel.app/api/songs/${song.id}`);
+        const data = await response.json();
+
+        if (data.success && data.data && data.data.length > 0) {
+          detailedSong = data.data[0];
+        }
+      }
+
+      // Check if we have album data with ID
+      if (detailedSong.album?.id) {
+        router.push(`/music/album/${detailedSong.album.id}`);
+        return;
+      }
+
+      // Fallback: search for the album by name if available
+      const albumName = detailedSong.album?.name || song.album;
+      if (albumName && typeof albumName === 'string') {
+        // Try to find the album ID by searching
+        const searchResponse = await fetch(`https://jiosaavn-api-blush.vercel.app/api/search?query=${encodeURIComponent(albumName)}`);
+        const searchData = await searchResponse.json();
+
+        if (searchData.success && searchData.data.albums?.results?.length > 0) {
+          // Find the exact album match
+          const exactMatch = searchData.data.albums.results.find(album =>
+            album.title?.toLowerCase() === albumName.toLowerCase() ||
+            album.name?.toLowerCase() === albumName.toLowerCase()
+          );
+
+          if (exactMatch && exactMatch.id) {
+            router.push(`/music/album/${exactMatch.id}`);
+            return;
+          }
+
+          // If no exact match, use the first result
+          if (searchData.data.albums.results[0]?.id) {
+            router.push(`/music/album/${searchData.data.albums.results[0].id}`);
+            return;
+          }
+        }
+
+        // Final fallback: redirect to search
+        router.push(`/music/search?q=${encodeURIComponent(albumName)}`);
+      } else {
+        console.log('No album information available for this song');
+      }
+    } catch (error) {
+      console.error('Error navigating to album:', error);
+      // Fallback to search if album name is available
+      const albumName = song.album?.name || song.album;
+      if (albumName && typeof albumName === 'string') {
+        router.push(`/music/search?q=${encodeURIComponent(albumName)}`);
+      }
+    }
+  };
+
+  const handleShare = (e, song) => {
+    e.stopPropagation();
+    if (navigator.share) {
+      navigator.share({
+        title: song.title || song.name,
+        text: `Check out "${song.title || song.name}" by ${getArtistNames(song)}`,
+        url: window.location.href
+      });
+    } else {
+      // Fallback: copy to clipboard
+      navigator.clipboard.writeText(window.location.href);
+      console.log('Link copied to clipboard');
+    }
+  };
+
+  const handleDownload = async (e, song) => {
+    e.stopPropagation();
+
+    try {
+      console.log('Attempting to download song:', song.title || song.name);
+
+      // First, try to get download links from the song object
+      let downloadUrl = null;
+
+      // Check if song already has download URLs
+      if (song.downloadUrl && Array.isArray(song.downloadUrl)) {
+        // Look for 320kbps quality first, then fallback to highest available
+        const highQuality = song.downloadUrl.find(url => url.quality === '320kbps') ||
+          song.downloadUrl.find(url => url.quality === '160kbps') ||
+          song.downloadUrl[song.downloadUrl.length - 1];
+        downloadUrl = highQuality?.url;
+      }
+
+      // If no download URL found, fetch from API
+      if (!downloadUrl && song.id) {
+        console.log('No download URL found in song object, fetching from API...');
+        const response = await fetch(`https://jiosaavn-api-blush.vercel.app/api/songs/${song.id}`);
+        const data = await response.json();
+
+        if (data.success && data.data && data.data[0]?.downloadUrl) {
+          const songData = data.data[0];
+          // Look for 320kbps quality first, then fallback to highest available
+          const highQuality = songData.downloadUrl.find(url => url.quality === '320kbps') ||
+            songData.downloadUrl.find(url => url.quality === '160kbps') ||
+            songData.downloadUrl[songData.downloadUrl.length - 1];
+          downloadUrl = highQuality?.url;
+          console.log('Found download URL from API:', downloadUrl);
+        }
+      }
+
+      if (downloadUrl) {
+        // Fetch the file through your website and trigger direct download
+        console.log('Fetching file for download...');
+
+        const filename = `${decodeHtmlEntities(song.title || song.name)} - ${getArtistNames(song)}.mp3`;
+
+        try {
+          // Fetch the file as a blob
+          const response = await fetch(downloadUrl, {
+            method: 'GET',
+            headers: {
+              'Accept': 'audio/mpeg, audio/mp4, */*'
+            }
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          // Get the file as a blob
+          const blob = await response.blob();
+
+          // Create a blob URL
+          const blobUrl = window.URL.createObjectURL(blob);
+
+          // Create a temporary anchor element for download
+          const link = document.createElement('a');
+          link.href = blobUrl;
+          link.download = filename;
+          link.style.display = 'none';
+
+          // Add to DOM, click, and remove
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+
+          // Clean up the blob URL after a short delay
+          setTimeout(() => {
+            window.URL.revokeObjectURL(blobUrl);
+          }, 1000);
+
+          console.log('Download completed for:', song.title || song.name);
+        } catch (fetchError) {
+          console.error('Error fetching file for download:', fetchError);
+
+          // Fallback: try direct link method if blob fetch fails
+          console.log('Falling back to direct link method...');
+          const link = document.createElement('a');
+          link.href = downloadUrl;
+          link.download = filename;
+          link.target = '_blank';
+          link.rel = 'noopener noreferrer';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        }
+      } else {
+        console.error('No download URL available for this song');
+        alert('Download not available for this song');
+      }
+    } catch (error) {
+      console.error('Error downloading song:', error);
+      alert('Failed to download song. Please try again.');
+    }
+  };
+
   return (
     <SidebarProvider>
       <AppSidebar />
@@ -456,18 +710,21 @@ function SearchPageContent() {
                     {searchResults.songs?.results?.length > 0 && (
                       <div className="xl:col-span-1">
                         <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Songs</h2>
-                        <div className="space-y-2">
+                        <div className="space-y-1">
                           {searchResults.songs.results.slice(0, 4).map((song, index) => {
                             const isCurrentSong = currentSong?.id === song.id;
                             return (
                               <div
                                 key={song.id || index}
-                                className={`flex items-center gap-3 p-2 sm:p-3 rounded-xl hover:bg-muted/40 group cursor-pointer transition-all duration-200 ${isCurrentSong ? 'bg-muted/40 ring-1 ring-green-500/20' : ''
+                                className={`flex items-center gap-3 p-2 rounded-md hover:bg-muted/30 group cursor-pointer transition-colors duration-150 ${isCurrentSong ? 'bg-muted/40' : ''
                                   }`}
                                 onClick={() => handlePlayClick(song, searchResults.songs.results)}
                               >
+                                <div className="text-sm text-muted-foreground w-4 text-center flex-shrink-0">
+                                  {index + 1}
+                                </div>
                                 <div className="relative flex-shrink-0">
-                                  <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg bg-muted overflow-hidden shadow-sm">
+                                  <div className="w-10 h-10 rounded bg-muted overflow-hidden">
                                     {song.image?.[1]?.url ? (
                                       <img
                                         src={song.image[1].url}
@@ -475,84 +732,112 @@ function SearchPageContent() {
                                         className="w-full h-full object-cover"
                                       />
                                     ) : (
-                                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-500 to-pink-500">
-                                        <Play className="w-4 h-4 text-white/70" />
+                                      <div className="w-full h-full flex items-center justify-center bg-muted">
+                                        <Play className="w-3 h-3 text-muted-foreground" />
                                       </div>
                                     )}
                                   </div>
                                   {isCurrentSong && isPlaying && (
-                                    <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg">
-                                      <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                                    <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded">
+                                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                                     </div>
                                   )}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <p className={`font-medium truncate text-sm sm:text-base ${isCurrentSong ? 'text-green-500' : ''
+                                  <p className={`font-medium truncate text-sm ${isCurrentSong ? 'text-green-500' : 'text-foreground'
                                     }`}>
                                     {decodeHtmlEntities(song.title || song.name)}
                                   </p>
-                                  <p className={`text-xs sm:text-sm truncate ${isCurrentSong ? 'text-green-400' : 'text-muted-foreground'
+                                  <p className={`text-xs truncate ${isCurrentSong ? 'text-green-400' : 'text-muted-foreground'
                                     }`}>
                                     {getArtistNames(song)}
                                   </p>
                                 </div>
                                 <div className="flex items-center gap-2 flex-shrink-0">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className={`transition-opacity p-1.5 h-8 w-8 hover:bg-muted/60 ${isLiked(song.id) || isCurrentSong
-                                      ? 'opacity-100 text-red-500'
-                                      : 'opacity-0 group-hover:opacity-100'
-                                      }`}
-                                    onClick={async (e) => {
-                                      e.stopPropagation();
-                                      try {
-                                        // Fetch detailed song info to get complete data for liking
-                                        let detailedSong = song;
-
-                                        if (!song.downloadUrl && song.id) {
-                                          const response = await fetch(`https://jiosaavn-api-blush.vercel.app/api/songs/${song.id}`);
-                                          const data = await response.json();
-
-                                          if (data.success && data.data && data.data.length > 0) {
-                                            detailedSong = data.data[0];
-                                          }
-                                        }
-
-                                        // Create proper song data structure for the like function
-                                        const songData = {
-                                          id: detailedSong.id,
-                                          name: detailedSong.name || detailedSong.title,
-                                          title: detailedSong.name || detailedSong.title,
-                                          artists: detailedSong.artists || { primary: [] },
-                                          primaryArtists: detailedSong.primaryArtists || getArtistNames(detailedSong),
-                                          album: detailedSong.album || { id: '', name: song.album || '' },
-                                          duration: detailedSong.duration || 0,
-                                          image: detailedSong.image || [],
-                                          releaseDate: detailedSong.releaseDate || '',
-                                          language: detailedSong.language || '',
-                                          playCount: detailedSong.playCount || 0,
-                                          downloadUrl: detailedSong.downloadUrl || [],
-                                          url: detailedSong.url || '',
-                                          type: 'song'
-                                        };
-                                        await toggleLike(songData);
-                                      } catch (error) {
-                                        console.error('Error toggling like:', error);
-                                      }
-                                    }}
-                                  >
-                                    {isLiked(song.id) ? (
-                                      <Heart className="w-4 h-4 fill-red-500 text-red-500" />
-                                    ) : (
-                                      <Heart className="w-4 h-4" />
-                                    )}
-                                  </Button>
                                   {song.duration ? (
-                                    <span className="text-xs text-muted-foreground min-w-[35px] text-right font-mono">
+                                    <span className="text-xs text-muted-foreground min-w-[30px] text-right font-mono">
                                       {formatDuration(song.duration)}
                                     </span>
                                   ) : null}
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity p-1 h-6 w-6 text-muted-foreground"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <MoreVertical className="w-3 h-3" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="w-48">
+                                      <DropdownMenuItem
+                                        onClick={async (e) => {
+                                          e.stopPropagation();
+                                          try {
+                                            // Fetch detailed song info to get complete data for liking
+                                            let detailedSong = song;
+
+                                            if (!song.downloadUrl && song.id) {
+                                              const response = await fetch(`https://jiosaavn-api-blush.vercel.app/api/songs/${song.id}`);
+                                              const data = await response.json();
+
+                                              if (data.success && data.data && data.data.length > 0) {
+                                                detailedSong = data.data[0];
+                                              }
+                                            }
+
+                                            // Create proper song data structure for the like function
+                                            const songData = {
+                                              id: detailedSong.id,
+                                              name: detailedSong.name || detailedSong.title,
+                                              title: detailedSong.name || detailedSong.title,
+                                              artists: detailedSong.artists || { primary: [] },
+                                              primaryArtists: detailedSong.primaryArtists || getArtistNames(detailedSong),
+                                              album: detailedSong.album || { id: '', name: song.album || '' },
+                                              duration: detailedSong.duration || 0,
+                                              image: detailedSong.image || [],
+                                              releaseDate: detailedSong.releaseDate || '',
+                                              language: detailedSong.language || '',
+                                              playCount: detailedSong.playCount || 0,
+                                              downloadUrl: detailedSong.downloadUrl || [],
+                                              url: detailedSong.url || '',
+                                              type: 'song'
+                                            };
+                                            await toggleLike(songData);
+                                          } catch (error) {
+                                            console.error('Error toggling like:', error);
+                                          }
+                                        }}
+                                        className={isLiked(song.id) ? "text-red-500" : ""}
+                                      >
+                                        <Heart className={`w-3 h-3 mr-2 ${isLiked(song.id) ? 'fill-red-500 text-red-500' : ''}`} />
+                                        {isLiked(song.id) ? 'Unlike' : 'Like'}
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={(e) => handleAddToPlaylist(e, song)}>
+                                        <Plus className="w-3 h-3 mr-2" />
+                                        Add to playlist
+                                      </DropdownMenuItem>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem onClick={(e) => handleGoToArtist(e, song)}>
+                                        <User className="w-3 h-3 mr-2" />
+                                        Go to artist
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={(e) => handleGoToAlbum(e, song)}>
+                                        <Disc className="w-3 h-3 mr-2" />
+                                        Go to album
+                                      </DropdownMenuItem>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem onClick={(e) => handleShare(e, song)}>
+                                        <Share className="w-3 h-3 mr-2" />
+                                        Share
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={(e) => handleDownload(e, song)}>
+                                        <Download className="w-3 h-3 mr-2" />
+                                        Download
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
                                 </div>
                               </div>
                             );
@@ -693,18 +978,21 @@ function SearchPageContent() {
                 {/* Songs Tab */}
                 <TabsContent value="songs">
                   {searchResults.songs?.results?.length > 0 ? (
-                    <div className="space-y-2">
+                    <div className="space-y-1">
                       {searchResults.songs.results.map((song, index) => {
                         const isCurrentSong = currentSong?.id === song.id;
                         return (
                           <div
                             key={song.id || index}
-                            className={`flex items-center gap-3 p-3 sm:p-4 rounded-xl hover:bg-muted/40 group cursor-pointer transition-all duration-200 ${isCurrentSong ? 'bg-muted/40 ring-1 ring-green-500/20' : ''
+                            className={`flex items-center gap-4 p-3 rounded-md hover:bg-muted/30 group cursor-pointer transition-colors duration-150 ${isCurrentSong ? 'bg-muted/40' : ''
                               }`}
                             onClick={() => handlePlayClick(song, searchResults.songs.results)}
                           >
+                            <div className="text-sm text-muted-foreground w-6 text-center flex-shrink-0">
+                              {index + 1}
+                            </div>
                             <div className="relative flex-shrink-0">
-                              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl bg-muted overflow-hidden shadow-sm">
+                              <div className="w-12 h-12 rounded bg-muted overflow-hidden">
                                 {song.image?.[1]?.url ? (
                                   <img
                                     src={song.image[1].url}
@@ -712,84 +1000,112 @@ function SearchPageContent() {
                                     className="w-full h-full object-cover"
                                   />
                                 ) : (
-                                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-500 to-pink-500">
-                                    <Play className="w-5 h-5 text-white/70" />
+                                  <div className="w-full h-full flex items-center justify-center bg-muted">
+                                    <Play className="w-4 h-4 text-muted-foreground" />
                                   </div>
                                 )}
                               </div>
                               {isCurrentSong && isPlaying && (
-                                <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-xl">
-                                  <div className="w-4 h-4 bg-green-500 rounded-full animate-pulse"></div>
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded">
+                                  <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
                                 </div>
                               )}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className={`font-semibold truncate text-base sm:text-lg ${isCurrentSong ? 'text-green-500' : ''
+                              <p className={`font-medium truncate text-base ${isCurrentSong ? 'text-green-500' : 'text-foreground'
                                 }`}>
                                 {decodeHtmlEntities(song.title)}
                               </p>
-                              <p className={`text-sm sm:text-base truncate ${isCurrentSong ? 'text-green-400' : 'text-muted-foreground'
+                              <p className={`text-sm truncate ${isCurrentSong ? 'text-green-400' : 'text-muted-foreground'
                                 }`}>
                                 {getArtistNames(song)}
                               </p>
                             </div>
                             <div className="flex items-center gap-3 flex-shrink-0">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className={`transition-opacity p-2 h-10 w-10 hover:bg-muted/60 ${isLiked(song.id) || isCurrentSong
-                                  ? 'opacity-100 text-red-500'
-                                  : 'opacity-0 group-hover:opacity-100'
-                                  }`}
-                                onClick={async (e) => {
-                                  e.stopPropagation();
-                                  try {
-                                    // Fetch detailed song info to get complete data for liking
-                                    let detailedSong = song;
-
-                                    if (!song.downloadUrl && song.id) {
-                                      const response = await fetch(`https://jiosaavn-api-blush.vercel.app/api/songs/${song.id}`);
-                                      const data = await response.json();
-
-                                      if (data.success && data.data && data.data.length > 0) {
-                                        detailedSong = data.data[0];
-                                      }
-                                    }
-
-                                    // Create proper song data structure for the like function
-                                    const songData = {
-                                      id: detailedSong.id,
-                                      name: detailedSong.name || detailedSong.title,
-                                      title: detailedSong.name || detailedSong.title,
-                                      artists: detailedSong.artists || { primary: [] },
-                                      primaryArtists: detailedSong.primaryArtists || getArtistNames(detailedSong),
-                                      album: detailedSong.album || { id: '', name: song.album || '' },
-                                      duration: detailedSong.duration || 0,
-                                      image: detailedSong.image || [],
-                                      releaseDate: detailedSong.releaseDate || '',
-                                      language: detailedSong.language || '',
-                                      playCount: detailedSong.playCount || 0,
-                                      downloadUrl: detailedSong.downloadUrl || [],
-                                      url: detailedSong.url || '',
-                                      type: 'song'
-                                    };
-                                    await toggleLike(songData);
-                                  } catch (error) {
-                                    console.error('Error toggling like:', error);
-                                  }
-                                }}
-                              >
-                                {isLiked(song.id) ? (
-                                  <Heart className="w-5 h-5 fill-red-500 text-red-500" />
-                                ) : (
-                                  <Heart className="w-5 h-5" />
-                                )}
-                              </Button>
                               {song.duration ? (
-                                <span className="text-sm text-muted-foreground min-w-[45px] text-right font-mono">
+                                <span className="text-sm text-muted-foreground min-w-[40px] text-right font-mono">
                                   {formatDuration(song.duration)}
                                 </span>
                               ) : null}
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity p-1.5 h-8 w-8 text-muted-foreground"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <MoreVertical className="w-4 h-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-48">
+                                  <DropdownMenuItem
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      try {
+                                        // Fetch detailed song info to get complete data for liking
+                                        let detailedSong = song;
+
+                                        if (!song.downloadUrl && song.id) {
+                                          const response = await fetch(`https://jiosaavn-api-blush.vercel.app/api/songs/${song.id}`);
+                                          const data = await response.json();
+
+                                          if (data.success && data.data && data.data.length > 0) {
+                                            detailedSong = data.data[0];
+                                          }
+                                        }
+
+                                        // Create proper song data structure for the like function
+                                        const songData = {
+                                          id: detailedSong.id,
+                                          name: detailedSong.name || detailedSong.title,
+                                          title: detailedSong.name || detailedSong.title,
+                                          artists: detailedSong.artists || { primary: [] },
+                                          primaryArtists: detailedSong.primaryArtists || getArtistNames(detailedSong),
+                                          album: detailedSong.album || { id: '', name: song.album || '' },
+                                          duration: detailedSong.duration || 0,
+                                          image: detailedSong.image || [],
+                                          releaseDate: detailedSong.releaseDate || '',
+                                          language: detailedSong.language || '',
+                                          playCount: detailedSong.playCount || 0,
+                                          downloadUrl: detailedSong.downloadUrl || [],
+                                          url: detailedSong.url || '',
+                                          type: 'song'
+                                        };
+                                        await toggleLike(songData);
+                                      } catch (error) {
+                                        console.error('Error toggling like:', error);
+                                      }
+                                    }}
+                                    className={isLiked(song.id) ? "text-red-500" : ""}
+                                  >
+                                    <Heart className={`w-4 h-4 mr-2 ${isLiked(song.id) ? 'fill-red-500 text-red-500' : ''}`} />
+                                    {isLiked(song.id) ? 'Unlike' : 'Like'}
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={(e) => handleAddToPlaylist(e, song)}>
+                                    <Plus className="w-4 h-4 mr-2" />
+                                    Add to playlist
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem onClick={(e) => handleGoToArtist(e, song)}>
+                                    <User className="w-4 h-4 mr-2" />
+                                    Go to artist
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={(e) => handleGoToAlbum(e, song)}>
+                                    <Disc className="w-4 h-4 mr-2" />
+                                    Go to album
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem onClick={(e) => handleShare(e, song)}>
+                                    <Share className="w-4 h-4 mr-2" />
+                                    Share
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={(e) => handleDownload(e, song)}>
+                                    <Download className="w-4 h-4 mr-2" />
+                                    Download
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             </div>
                           </div>
                         );

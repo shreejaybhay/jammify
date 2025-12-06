@@ -35,6 +35,21 @@ export function useLikedAlbums(userId) {
       throw new Error('User ID and album data are required');
     }
 
+    // Optimistic update - update UI immediately
+    const wasLiked = likedAlbums.has(albumData.id);
+    const willBeLiked = !wasLiked;
+    
+    // Update local state optimistically
+    setLikedAlbums(prev => {
+      const newSet = new Set(prev);
+      if (willBeLiked) {
+        newSet.add(albumData.id);
+      } else {
+        newSet.delete(albumData.id);
+      }
+      return newSet;
+    });
+
     try {
       const response = await fetch('/api/liked-albums', {
         method: 'POST',
@@ -50,10 +65,14 @@ export function useLikedAlbums(userId) {
       const result = await response.json();
       
       if (result.success) {
-        // Update local state
+        // Server confirmed the operation, no need to update state again
+        // as we already did optimistic update
+        return result;
+      } else {
+        // Server operation failed, revert optimistic update
         setLikedAlbums(prev => {
           const newSet = new Set(prev);
-          if (result.liked) {
+          if (wasLiked) {
             newSet.add(albumData.id);
           } else {
             newSet.delete(albumData.id);
@@ -61,15 +80,24 @@ export function useLikedAlbums(userId) {
           return newSet;
         });
         
-        return result;
-      } else {
         throw new Error(result.error || 'Failed to toggle album like');
       }
     } catch (error) {
+      // Network error, revert optimistic update
+      setLikedAlbums(prev => {
+        const newSet = new Set(prev);
+        if (wasLiked) {
+          newSet.add(albumData.id);
+        } else {
+          newSet.delete(albumData.id);
+        }
+        return newSet;
+      });
+      
       console.error('Error toggling album like:', error);
       throw error;
     }
-  }, [userId]);
+  }, [userId, likedAlbums]);
 
   // Check if a specific album is liked (useful for individual checks)
   const checkIsLiked = useCallback(async (albumId) => {

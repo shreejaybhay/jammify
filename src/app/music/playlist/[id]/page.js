@@ -20,7 +20,14 @@ import {
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Play, ArrowLeft, Heart, MoreHorizontal, Clock, Shuffle } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Play, ArrowLeft, Heart, MoreVertical, Clock, Shuffle, Plus, User, Disc, Share, Download } from "lucide-react";
 import { useLikedSongs } from "@/hooks/useLikedSongs";
 import { useLikedPlaylists } from "@/hooks/useLikedPlaylists";
 import { useMusicPlayer } from "@/contexts/music-player-context";
@@ -206,6 +213,142 @@ function PlaylistPageContent() {
     const textarea = document.createElement('textarea');
     textarea.innerHTML = text;
     return textarea.value;
+  };
+
+  const handleAddToPlaylist = (e, song) => {
+    e.stopPropagation();
+    // TODO: Implement add to playlist functionality
+    console.log('Add to playlist:', song.name);
+  };
+
+  const handleGoToArtist = (e, song) => {
+    e.stopPropagation();
+    if (song.artists?.primary?.length > 0) {
+      router.push(`/music/artist/${song.artists.primary[0].id}`);
+    }
+  };
+
+  const handleGoToAlbum = (e, song) => {
+    e.stopPropagation();
+    if (song.album?.id) {
+      router.push(`/music/album/${song.album.id}`);
+    }
+  };
+
+  const handleShare = (e, song) => {
+    e.stopPropagation();
+    if (navigator.share) {
+      navigator.share({
+        title: song.name,
+        text: `Check out "${song.name}" by ${song.artists?.primary?.[0]?.name || 'Unknown Artist'}`,
+        url: window.location.href
+      });
+    } else {
+      // Fallback: copy to clipboard
+      navigator.clipboard.writeText(window.location.href);
+      console.log('Link copied to clipboard');
+    }
+  };
+
+  const handleDownload = async (e, song) => {
+    e.stopPropagation();
+
+    try {
+      console.log('Attempting to download song:', song.name);
+
+      // First, try to get download links from the song object
+      let downloadUrl = null;
+
+      // Check if song already has download URLs
+      if (song.downloadUrl && Array.isArray(song.downloadUrl)) {
+        // Look for 320kbps quality first, then fallback to highest available
+        const highQuality = song.downloadUrl.find(url => url.quality === '320kbps') ||
+          song.downloadUrl.find(url => url.quality === '160kbps') ||
+          song.downloadUrl[song.downloadUrl.length - 1];
+        downloadUrl = highQuality?.url;
+      }
+
+      // If no download URL found, fetch from API
+      if (!downloadUrl) {
+        console.log('No download URL found in song object, fetching from API...');
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/songs?ids=${song.id}`);
+        const data = await response.json();
+
+        if (data.success && data.data && data.data[0]?.downloadUrl) {
+          const songData = data.data[0];
+          // Look for 320kbps quality first, then fallback to highest available
+          const highQuality = songData.downloadUrl.find(url => url.quality === '320kbps') ||
+            songData.downloadUrl.find(url => url.quality === '160kbps') ||
+            songData.downloadUrl[songData.downloadUrl.length - 1];
+          downloadUrl = highQuality?.url;
+          console.log('Found download URL from API:', downloadUrl);
+        }
+      }
+
+      if (downloadUrl) {
+        // Fetch the file through your website and trigger direct download
+        console.log('Fetching file for download...');
+
+        const filename = `${decodeHtmlEntities(song.name)} - ${song.artists?.primary?.[0]?.name || 'Unknown Artist'}.mp3`;
+
+        try {
+          // Fetch the file as a blob
+          const response = await fetch(downloadUrl, {
+            method: 'GET',
+            headers: {
+              'Accept': 'audio/mpeg, audio/mp4, */*'
+            }
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          // Get the file as a blob
+          const blob = await response.blob();
+
+          // Create a blob URL
+          const blobUrl = window.URL.createObjectURL(blob);
+
+          // Create a temporary anchor element for download
+          const link = document.createElement('a');
+          link.href = blobUrl;
+          link.download = filename;
+          link.style.display = 'none';
+
+          // Add to DOM, click, and remove
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+
+          // Clean up the blob URL after a short delay
+          setTimeout(() => {
+            window.URL.revokeObjectURL(blobUrl);
+          }, 1000);
+
+          console.log('Download completed for:', song.name);
+        } catch (fetchError) {
+          console.error('Error fetching file for download:', fetchError);
+
+          // Fallback: try direct link method if blob fetch fails
+          console.log('Falling back to direct link method...');
+          const link = document.createElement('a');
+          link.href = downloadUrl;
+          link.download = filename;
+          link.target = '_blank';
+          link.rel = 'noopener noreferrer';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        }
+      } else {
+        console.error('No download URL available for this song');
+        alert('Download not available for this song');
+      }
+    } catch (error) {
+      console.error('Error downloading song:', error);
+      alert('Failed to download song. Please try again.');
+    }
   };
 
   if (loading) {
@@ -415,7 +558,7 @@ function PlaylistPageContent() {
                 <Heart className={`w-5 h-5 md:w-6 md:h-6 ${isPlaylistLiked(playlistId) ? 'fill-current' : ''}`} />
               </Button>
               <Button variant="ghost" size="lg" className="rounded-full w-10 h-10 md:w-12 md:h-12">
-                <MoreHorizontal className="w-5 h-5 md:w-6 md:h-6" />
+                <MoreVertical className="w-5 h-5 md:w-6 md:h-6" />
               </Button>
             </div>
           </div>
@@ -428,8 +571,11 @@ function PlaylistPageContent() {
               <div>Title</div>
               <div>Album</div>
               <div>Release Date</div>
-              <div className="text-center">
-                <Clock className="w-4 h-4 mx-auto" />
+              <div className="flex items-center justify-end gap-1">
+                <div className="min-w-[40px] text-right">
+                  <Clock className="w-4 h-4 ml-auto" />
+                </div>
+                <div className="w-8"></div>
               </div>
             </div>
 
@@ -513,22 +659,57 @@ function PlaylistPageContent() {
                       </div>
 
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className={`p-2 h-8 w-8 ${isLiked(song.id) ? 'text-red-500' : 'text-muted-foreground'
-                            }`}
-                          onClick={async (e) => {
-                            e.stopPropagation();
-                            const result = await toggleLike(song);
-                            console.log(result.message);
-                          }}
-                        >
-                          <Heart className={`w-4 h-4 ${isLiked(song.id) ? 'fill-current' : ''}`} />
-                        </Button>
                         <div className="text-xs text-muted-foreground min-w-[35px] text-right">
                           {formatDuration(song.duration)}
                         </div>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="p-2 h-8 w-8 text-muted-foreground"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <MoreVertical className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48">
+                            <DropdownMenuItem onClick={(e) => handleAddToPlaylist(e, song)}>
+                              <Plus className="w-4 h-4 mr-2" />
+                              Add to playlist
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={(e) => handleGoToArtist(e, song)}>
+                              <User className="w-4 h-4 mr-2" />
+                              Go to artist
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={(e) => handleGoToAlbum(e, song)}>
+                              <Disc className="w-4 h-4 mr-2" />
+                              Go to album
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={(e) => handleShare(e, song)}>
+                              <Share className="w-4 h-4 mr-2" />
+                              Share
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={(e) => handleDownload(e, song)}>
+                              <Download className="w-4 h-4 mr-2" />
+                              Download
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                const result = await toggleLike(song);
+                                console.log(result.message);
+                              }}
+                              className={isLiked(song.id) ? 'text-red-500' : ''}
+                            >
+                              <Heart className={`w-4 h-4 mr-2 ${isLiked(song.id) ? 'fill-current' : ''}`} />
+                              {isLiked(song.id) ? 'Unlike' : 'Like'}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </div>
 
@@ -635,22 +816,57 @@ function PlaylistPageContent() {
                       </div>
 
                       <div className="flex items-center justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className={`opacity-0 group-hover:opacity-100 transition-opacity p-1 h-8 w-8 shrink-0 ${isLiked(song.id) ? 'text-red-500 opacity-100' : ''
-                            }`}
-                          onClick={async (e) => {
-                            e.stopPropagation();
-                            const result = await toggleLike(song);
-                            console.log(result.message);
-                          }}
-                        >
-                          <Heart className={`w-4 h-4 ${isLiked(song.id) ? 'fill-current' : ''}`} />
-                        </Button>
                         <div className="text-sm text-muted-foreground min-w-[40px] text-right">
                           {formatDuration(song.duration)}
                         </div>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="opacity-0 group-hover:opacity-100 transition-opacity p-1 h-8 w-8 shrink-0"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <MoreVertical className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48">
+                            <DropdownMenuItem onClick={(e) => handleAddToPlaylist(e, song)}>
+                              <Plus className="w-4 h-4 mr-2" />
+                              Add to playlist
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={(e) => handleGoToArtist(e, song)}>
+                              <User className="w-4 h-4 mr-2" />
+                              Go to artist
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={(e) => handleGoToAlbum(e, song)}>
+                              <Disc className="w-4 h-4 mr-2" />
+                              Go to album
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={(e) => handleShare(e, song)}>
+                              <Share className="w-4 h-4 mr-2" />
+                              Share
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={(e) => handleDownload(e, song)}>
+                              <Download className="w-4 h-4 mr-2" />
+                              Download
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                const result = await toggleLike(song);
+                                console.log(result.message);
+                              }}
+                              className={isLiked(song.id) ? 'text-red-500' : ''}
+                            >
+                              <Heart className={`w-4 h-4 mr-2 ${isLiked(song.id) ? 'fill-current' : ''}`} />
+                              {isLiked(song.id) ? 'Unlike' : 'Like'}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </div>
                   </div>
