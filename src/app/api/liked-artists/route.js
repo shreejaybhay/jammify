@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import LikedArtist from '@/models/LikedArtist';
+import mongoose from 'mongoose';
 
 // GET - Fetch all liked artists for a user
 export async function GET(request) {
@@ -16,8 +17,16 @@ export async function GET(request) {
         { status: 400 }
       );
     }
+
+    // Validate and convert userId to ObjectId
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid user ID format' },
+        { status: 400 }
+      );
+    }
     
-    const likedArtists = await LikedArtist.findByUser(userId);
+    const likedArtists = await LikedArtist.findByUser(new mongoose.Types.ObjectId(userId));
     
     return NextResponse.json({
       success: true,
@@ -48,8 +57,16 @@ export async function POST(request) {
         { status: 400 }
       );
     }
+
+    // Validate and convert userId to ObjectId
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid user ID format' },
+        { status: 400 }
+      );
+    }
     
-    const result = await LikedArtist.toggleLike(userId, artistId);
+    const result = await LikedArtist.toggleLike(new mongoose.Types.ObjectId(userId), artistId);
     
     return NextResponse.json({
       success: true,

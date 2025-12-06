@@ -37,8 +37,8 @@ export default function ArtistPage() {
   const [isArtistLiked, setIsArtistLiked] = useState(false);
   const [artistLikeLoading, setArtistLikeLoading] = useState(false);
 
-  // Initialize liked songs hook with actual user name
-  const { toggleLike, isLiked } = useLikedSongs('shree jaybhay');
+  // Initialize liked songs hook with actual user ID
+  const { toggleLike, isLiked } = useLikedSongs(session?.user?.id);
 
   // Initialize music player
   const { playSong, currentSong, isPlaying } = useMusicPlayer();
@@ -85,9 +85,9 @@ export default function ArtistPage() {
   // Check if artist is liked when component mounts and session is available
   useEffect(() => {
     const checkArtistLiked = async () => {
-      if (session?.user?.email && artistId) {
+      if (session?.user?.id && artistId) {
         try {
-          const response = await fetch(`/api/liked-artists/check?userId=${session.user.email}&artistId=${artistId}`);
+          const response = await fetch(`/api/liked-artists/check?userId=${session.user.id}&artistId=${artistId}`);
           const data = await response.json();
           if (data.success) {
             setIsArtistLiked(data.isLiked);
@@ -205,7 +205,7 @@ export default function ArtistPage() {
   };
 
   const toggleArtistLike = async () => {
-    if (!session?.user?.email) {
+    if (!session?.user?.id) {
       console.log('User not logged in');
       return;
     }
@@ -216,7 +216,7 @@ export default function ArtistPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: session.user.email,
+          userId: session.user.id,
           artistId: artistId
         })
       });
@@ -428,7 +428,7 @@ export default function ArtistPage() {
                 size="lg"
                 className={`rounded-full w-10 h-10 md:w-12 md:h-12 ${isArtistLiked ? 'text-red-500' : ''}`}
                 onClick={toggleArtistLike}
-                disabled={artistLikeLoading || !session?.user?.email}
+                disabled={artistLikeLoading || !session?.user?.id}
               >
                 <Heart className={`w-5 h-5 md:w-6 md:h-6 ${isArtistLiked ? 'fill-current' : ''}`} />
               </Button>

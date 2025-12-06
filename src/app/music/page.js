@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { AppSidebar } from "@/components/app-sidebar";
 import {
   Breadcrumb,
@@ -25,6 +26,7 @@ import { useLikedPlaylists } from "@/hooks/useLikedPlaylists";
 
 export default function MusicPage() {
   const router = useRouter();
+  const { data: session } = useSession();
   const [currentlyPlaying, setCurrentlyPlaying] = useState(null);
   const [newReleases, setNewReleases] = useState([]);
   const [trendingPlaylists, setTrendingPlaylists] = useState([]);
@@ -37,10 +39,10 @@ export default function MusicPage() {
   const [playlistColors, setPlaylistColors] = useState({});
 
   // Initialize liked songs hook to show count
-  const { likedSongs, getLikedCount } = useLikedSongs('shree jaybhay');
+  const { likedSongs, getLikedCount } = useLikedSongs(session?.user?.id);
 
   // Initialize liked playlists hook
-  const { likedPlaylists, loading: playlistsLoading } = useLikedPlaylists('shree jaybhay');
+  const { likedPlaylists, loading: playlistsLoading } = useLikedPlaylists(session?.user?.id);
 
   useEffect(() => {
     const fetchNewReleases = async () => {

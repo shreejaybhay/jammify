@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { AppSidebar } from "@/components/app-sidebar";
 import {
   Breadcrumb,
@@ -23,16 +24,19 @@ import { useLikedAlbums } from "@/hooks/useLikedAlbums";
 
 export default function AlbumsPage() {
   const router = useRouter();
+  const { data: session } = useSession();
   const [likedAlbumsData, setLikedAlbumsData] = useState([]);
   const [hasLoaded, setHasLoaded] = useState(false);
 
   // Initialize liked albums hook
-  const { toggleLike: toggleAlbumLike } = useLikedAlbums('shree jaybhay');
+  const { toggleLike: toggleAlbumLike } = useLikedAlbums(session?.user?.id);
 
   useEffect(() => {
     const fetchLikedAlbums = async () => {
+      if (!session?.user?.id) return;
+
       try {
-        const response = await fetch('/api/liked-albums?userId=shree jaybhay');
+        const response = await fetch(`/api/liked-albums?userId=${session.user.id}`);
         const data = await response.json();
 
         if (data.success) {
@@ -46,7 +50,7 @@ export default function AlbumsPage() {
     };
 
     fetchLikedAlbums();
-  }, []);
+  }, [session?.user?.id]);
 
   const handleAlbumClick = (albumId) => {
     router.push(`/music/album/${albumId}`);
@@ -54,10 +58,18 @@ export default function AlbumsPage() {
 
   const handleUnlikeAlbum = async (album, e) => {
     e.stopPropagation();
+    if (!session?.user?.id) return;
+
     try {
-      await toggleAlbumLike(album.albumData);
+      // Transform the album data to match the expected format for the hook
+      const albumForHook = {
+        ...album.albumData,
+        id: album.albumId  // Add the id property that the hook expects
+      };
+
+      await toggleAlbumLike(albumForHook);
       // Refresh the list
-      const response = await fetch('/api/liked-albums?userId=shree jaybhay');
+      const response = await fetch(`/api/liked-albums?userId=${session.user.id}`);
       const data = await response.json();
       if (data.success) {
         setLikedAlbumsData(data.data);
@@ -100,10 +112,10 @@ export default function AlbumsPage() {
           </div>
         </header>
 
-        <div className="flex-1 p-6">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold mb-2">Liked Albums</h1>
-            <p className="text-muted-foreground">
+        <div className="flex-1 p-3 md:p-6">
+          <div className="mb-4 md:mb-6">
+            <h1 className="text-xl md:text-2xl font-bold mb-2">Liked Albums</h1>
+            <p className="text-sm md:text-base text-muted-foreground">
               {likedAlbumsData.length} album{likedAlbumsData.length !== 1 ? 's' : ''}
             </p>
           </div>
@@ -120,14 +132,14 @@ export default function AlbumsPage() {
               </Button>
             </div>
           ) : likedAlbumsData.length > 0 ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-4">
               {likedAlbumsData.map((album) => (
                 <div
                   key={album.id}
-                  className="group cursor-pointer p-3 rounded-lg hover:bg-muted/50 transition-colors"
+                  className="group cursor-pointer p-2 md:p-3 rounded-lg hover:bg-muted/50 transition-colors"
                   onClick={() => handleAlbumClick(album.albumId)}
                 >
-                  <div className="relative mb-3">
+                  <div className="relative mb-2 md:mb-3">
                     <div className="aspect-square rounded-lg overflow-hidden bg-gradient-to-br from-purple-500 to-pink-500">
                       {album.albumData?.image?.[2]?.url || album.albumData?.image?.[1]?.url || album.albumData?.image?.[0]?.url ? (
                         <img
@@ -140,44 +152,44 @@ export default function AlbumsPage() {
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
-                          <Disc className="w-12 h-12 opacity-50 text-white" />
+                          <Disc className="w-8 h-8 md:w-12 md:h-12 opacity-50 text-white" />
                         </div>
                       )}
                     </div>
 
-                    {/* Play button overlay */}
-                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20 rounded-lg">
+                    {/* Play button overlay - hidden on mobile, visible on desktop hover */}
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 md:group-hover:opacity-100 transition-opacity bg-black/20 rounded-lg">
                       <Button
                         size="sm"
-                        className="rounded-full w-12 h-12 bg-green-500 hover:bg-green-600 text-black shadow-lg"
+                        className="rounded-full w-10 h-10 md:w-12 md:h-12 bg-green-500 hover:bg-green-600 text-black shadow-lg"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleAlbumClick(album.albumId);
                         }}
                       >
-                        <Play className="w-5 h-5 ml-0.5" />
+                        <Play className="w-4 h-4 md:w-5 md:h-5 ml-0.5" />
                       </Button>
                     </div>
 
-                    {/* Unlike button */}
+                    {/* Unlike button - always visible on mobile, hover on desktop */}
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 h-8 w-8 bg-black/50 hover:bg-black/70 text-red-500"
+                      className="absolute top-1 right-1 md:top-2 md:right-2 md:opacity-0 md:group-hover:opacity-100 transition-opacity p-1 h-6 w-6 md:h-8 md:w-8 bg-black/50 hover:bg-black/70 text-red-500"
                       onClick={(e) => handleUnlikeAlbum(album, e)}
                     >
-                      <Heart className="w-4 h-4 fill-current" />
+                      <Heart className="w-3 h-3 md:w-4 md:h-4 fill-current" />
                     </Button>
                   </div>
 
                   <div className="space-y-1">
-                    <h3 className="font-medium truncate">
+                    <h3 className="font-medium text-sm md:text-base truncate">
                       {decodeHtmlEntities(album.albumData?.name) || 'Unknown Album'}
                     </h3>
-                    <p className="text-sm text-muted-foreground truncate">
+                    <p className="text-xs md:text-sm text-muted-foreground truncate">
                       {album.albumData?.artists?.primary?.map(artist => artist.name).join(', ') || 'Unknown Artist'}
                     </p>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <div className="flex items-center gap-1 md:gap-2 text-xs text-muted-foreground">
                       {album.albumData?.year && (
                         <div className="flex items-center gap-1">
                           <Calendar className="w-3 h-3" />

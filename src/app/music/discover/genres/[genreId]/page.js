@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { AppSidebar } from "@/components/app-sidebar";
 import {
     Breadcrumb,
@@ -27,6 +28,7 @@ import { useMusicPlayer } from "@/contexts/music-player-context";
 export default function GenreDetailPage() {
     const router = useRouter();
     const params = useParams();
+    const { data: session } = useSession();
     const genreId = params.genreId;
 
     const [songs, setSongs] = useState([]);
@@ -45,7 +47,7 @@ export default function GenreDetailPage() {
     const genreName = currentGenre?.name || genreId;
 
     // Initialize hooks
-    const { toggleLike, isLiked } = useLikedSongs('shree jaybhay');
+    const { toggleLike, isLiked } = useLikedSongs(session?.user?.id);
     const { playSong, currentSong, isPlaying } = useMusicPlayer();
 
     useEffect(() => {

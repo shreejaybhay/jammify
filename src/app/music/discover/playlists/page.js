@@ -112,9 +112,9 @@ export default function PlaylistsPage() {
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6">
                 {Array.from({ length: 24 }).map((_, index) => (
                   <div key={index} className="space-y-3">
-                    <div className="bg-gray-300 animate-pulse rounded-lg aspect-square" />
-                    <div className="bg-gray-300 animate-pulse h-4 rounded" />
-                    <div className="bg-gray-300 animate-pulse h-3 rounded w-2/3" />
+                    <div className="bg-muted animate-pulse rounded-lg aspect-square" />
+                    <div className="bg-muted animate-pulse h-4 rounded" />
+                    <div className="bg-muted animate-pulse h-3 rounded w-2/3" />
                   </div>
                 ))}
               </div>

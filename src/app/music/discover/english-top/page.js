@@ -20,17 +20,17 @@ import {
 import { Button } from "@/components/ui/button";
 import { Play, ArrowLeft } from "lucide-react";
 
-function EnglishTopPage() {
+export default function EnglishTopPage() {
     const router = useRouter();
-    const [englishTop, setEnglishTop] = useState([]);
+    const [topHits, setTopHits] = useState([]);
     const [displayedHits, setDisplayedHits] = useState([]);
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
     const [currentlyPlaying, setCurrentlyPlaying] = useState(null);
     const [hasMore, setHasMore] = useState(true);
     const [currentIndex, setCurrentIndex] = useState(0);
-    
-    const ITEMS_PER_BATCH = 24;
+
+    const ITEMS_PER_BATCH = 24; // Load 24 items at a time
 
     // Save state to sessionStorage whenever it changes
     useEffect(() => {
@@ -49,7 +49,7 @@ function EnglishTopPage() {
                 const targetScrollPosition = parseInt(savedScrollPosition);
                 let hasUserScrolled = false;
                 let restorationTimeouts = [];
-                
+
                 // Track if user starts scrolling manually
                 const handleUserScroll = () => {
                     hasUserScrolled = true;
@@ -60,7 +60,7 @@ function EnglishTopPage() {
                     // Clear the saved position so it doesn't interfere
                     sessionStorage.removeItem('englishTopScrollPosition');
                 };
-                
+
                 const restoreScroll = () => {
                     if (!hasUserScrolled) {
                         window.scrollTo(0, targetScrollPosition);
@@ -69,12 +69,12 @@ function EnglishTopPage() {
 
                 // Add scroll listener to detect manual scrolling
                 window.addEventListener('scroll', handleUserScroll);
-                
+
                 // Multiple restoration attempts (but they'll be cancelled if user scrolls)
                 restorationTimeouts.push(setTimeout(restoreScroll, 100));
                 restorationTimeouts.push(setTimeout(restoreScroll, 500));
                 restorationTimeouts.push(setTimeout(restoreScroll, 1000));
-                
+
                 // Clean up after final attempt
                 restorationTimeouts.push(setTimeout(() => {
                     window.removeEventListener('scroll', handleUserScroll);
@@ -87,17 +87,17 @@ function EnglishTopPage() {
     // Load more items function
     const loadMoreItems = () => {
         if (loadingMore || !hasMore) return;
-        
+
         setLoadingMore(true);
         const nextIndex = currentIndex + ITEMS_PER_BATCH;
-        const nextBatch = englishTop.slice(currentIndex, nextIndex);
-        
+        const nextBatch = topHits.slice(currentIndex, nextIndex);
+
         setTimeout(() => {
             setDisplayedHits(prev => [...prev, ...nextBatch]);
             setCurrentIndex(nextIndex);
-            setHasMore(nextIndex < englishTop.length);
+            setHasMore(nextIndex < topHits.length);
             setLoadingMore(false);
-        }, 300);
+        }, 300); // Small delay for smooth loading
     };
 
     // Scroll event handler
@@ -110,10 +110,10 @@ function EnglishTopPage() {
 
         window.addEventListener('scroll', handleScroll);
         return () => window.removeEventListener('scroll', handleScroll);
-    }, [currentIndex, englishTop.length, loadingMore, hasMore]);
+    }, [currentIndex, topHits.length, loadingMore, hasMore]);
 
     useEffect(() => {
-        const fetchAllEnglishTop = async () => {
+        const fetchAllTopHits = async () => {
             try {
                 setLoading(true);
 
@@ -128,8 +128,8 @@ function EnglishTopPage() {
                     try {
                         const parsedDisplayedHits = JSON.parse(savedDisplayedHits);
                         const parsedAllData = JSON.parse(savedAllData);
-                        
-                        setEnglishTop(parsedAllData);
+
+                        setTopHits(parsedAllData);
                         setDisplayedHits(parsedDisplayedHits);
                         setCurrentIndex(parseInt(savedCurrentIndex));
                         setHasMore(savedHasMore === 'true');
@@ -147,7 +147,7 @@ function EnglishTopPage() {
 
                 if (initialData.success && initialData.data.total) {
                     const total = initialData.data.total;
-                    const limit = 40;
+                    const limit = 40; // API limit per request
                     const totalPages = Math.ceil(total / limit);
 
                     let allPlaylists = [];
@@ -175,11 +175,11 @@ function EnglishTopPage() {
                         index === self.findIndex(p => p.id === playlist.id)
                     );
 
-                    setEnglishTop(uniquePlaylists);
-                    
+                    setTopHits(uniquePlaylists);
+
                     // Save all data for future use
                     sessionStorage.setItem('englishTopAllData', JSON.stringify(uniquePlaylists));
-                    
+
                     // Set initial batch for fresh visits
                     const initialBatch = uniquePlaylists.slice(0, ITEMS_PER_BATCH);
                     setDisplayedHits(initialBatch);
@@ -187,13 +187,13 @@ function EnglishTopPage() {
                     setHasMore(ITEMS_PER_BATCH < uniquePlaylists.length);
                 }
             } catch (error) {
-                console.error('Error fetching english top playlists:', error);
+                console.error('Error fetching top hits:', error);
             } finally {
                 setLoading(false);
             }
         };
 
-        fetchAllEnglishTop();
+        fetchAllTopHits();
     }, []);
 
     const handlePlayClick = (item, type) => {
@@ -204,7 +204,7 @@ function EnglishTopPage() {
     const handleCardClick = (playlist) => {
         // Save scroll position before navigating
         sessionStorage.setItem('englishTopScrollPosition', window.scrollY.toString());
-        
+
         // Navigate to playlist detail page with songCount as query parameter
         router.push(`/music/playlist/${playlist.id}?songCount=${playlist.songCount || 50}`);
     };
@@ -265,9 +265,9 @@ function EnglishTopPage() {
                             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6">
                                 {Array.from({ length: 24 }).map((_, index) => (
                                     <div key={index} className="space-y-3">
-                                        <div className="bg-gray-300 animate-pulse rounded-lg aspect-square" />
-                                        <div className="bg-gray-300 animate-pulse h-4 rounded" />
-                                        <div className="bg-gray-300 animate-pulse h-3 rounded w-2/3" />
+                                        <div className="bg-muted animate-pulse rounded-lg aspect-square" />
+                                        <div className="bg-muted animate-pulse h-4 rounded" />
+                                        <div className="bg-muted animate-pulse h-3 rounded w-2/3" />
                                     </div>
                                 ))}
                             </div>
@@ -280,23 +280,22 @@ function EnglishTopPage() {
                                             className="group cursor-pointer hover:scale-105 transition-transform"
                                             onClick={() => handleCardClick(playlist)}
                                         >
-                                            <div className="relative rounded-lg aspect-square overflow-hidden mb-3 bg-gradient-to-br from-green-500 to-emerald-600">
+                                            <div className="relative rounded-lg aspect-square overflow-hidden mb-3 bg-muted">
                                                 {playlist.image?.[2]?.url || playlist.image?.[1]?.url || playlist.image?.[0]?.url ? (
                                                     <img
                                                         src={playlist.image?.[2]?.url || playlist.image?.[1]?.url || playlist.image?.[0]?.url}
                                                         alt={playlist.name}
-                                                        className="w-full h-full object-cover"
+                                                        className="w-full h-full object-cover transition-opacity duration-300"
+                                                        style={{ opacity: 0 }}
                                                         onError={(e) => {
-                                                            console.log('Image failed to load:', e.target.src);
                                                             e.target.style.display = 'none';
-                                                            // Show the gradient background instead
                                                         }}
-                                                        onLoad={() => {
-                                                            console.log('Image loaded successfully');
+                                                        onLoad={(e) => {
+                                                            e.target.style.opacity = 1;
                                                         }}
                                                     />
                                                 ) : (
-                                                    <div className="w-full h-full flex items-center justify-center text-white">
+                                                    <div className="w-full h-full flex items-center justify-center text-muted-foreground">
                                                         <Play className="w-12 h-12 opacity-50" />
                                                     </div>
                                                 )}
@@ -329,9 +328,9 @@ function EnglishTopPage() {
                                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6 mt-6">
                                         {Array.from({ length: 12 }).map((_, index) => (
                                             <div key={`loading-${index}`} className="space-y-3">
-                                                <div className="bg-gray-300 animate-pulse rounded-lg aspect-square" />
-                                                <div className="bg-gray-300 animate-pulse h-4 rounded" />
-                                                <div className="bg-gray-300 animate-pulse h-3 rounded w-2/3" />
+                                                <div className="bg-muted animate-pulse rounded-lg aspect-square" />
+                                                <div className="bg-muted animate-pulse h-4 rounded" />
+                                                <div className="bg-muted animate-pulse h-3 rounded w-2/3" />
                                             </div>
                                         ))}
                                     </div>
@@ -361,9 +360,9 @@ function EnglishTopPage() {
                             </>
                         )}
 
-                        {!loading && displayedHits.length === 0 && (
+                        {!loading && topHits.length === 0 && (
                             <div className="text-center py-12">
-                                <p className="text-muted-foreground">No English top playlists found</p>
+                                <p className="text-muted-foreground">No top hits found</p>
                             </div>
                         )}
 
@@ -375,5 +374,3 @@ function EnglishTopPage() {
         </SidebarProvider>
     );
 }
-
-export default EnglishTopPage;

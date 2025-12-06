@@ -31,7 +31,7 @@ export default function ArtistsPage() {
 
   useEffect(() => {
     // Only initialize once when authenticated and not already initialized
-    if (status === "authenticated" && session?.user?.email && !hasInitialized) {
+    if (status === "authenticated" && session?.user?.id && !hasInitialized) {
       initializeArtistsPage();
     } else if (status === "unauthenticated") {
       setHasInitialized(false);
@@ -40,10 +40,10 @@ export default function ArtistsPage() {
 
   const initializeArtistsPage = async () => {
     try {
-      console.log('Initializing artists page for user:', session.user.email);
+      console.log('Initializing artists page for user:', session.user.id);
 
       // Step 1: Fetch liked artists list
-      const response = await fetch(`/api/liked-artists?userId=${session.user.email}`);
+      const response = await fetch(`/api/liked-artists?userId=${session.user.id}`);
       const data = await response.json();
 
       if (!data.success) {
@@ -107,7 +107,7 @@ export default function ArtistsPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: session.user.email,
+          userId: session.user.id,
           artistId: artistId
         })
       });

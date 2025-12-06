@@ -20,7 +20,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Play, ArrowLeft } from "lucide-react";
 
-export default function TopHitsPage() {
+export default function EnglishTopPage() {
     const router = useRouter();
     const [topHits, setTopHits] = useState([]);
     const [displayedHits, setDisplayedHits] = useState([]);
@@ -142,7 +142,7 @@ export default function TopHitsPage() {
                 }
 
                 // Fresh fetch if no saved data
-                const initialResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/search/playlists?query=top%20hits&page=0&limit=1`);
+                const initialResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/search/playlists?query=english%20top&page=0&limit=1`);
                 const initialData = await initialResponse.json();
 
                 if (initialData.success && initialData.data.total) {
@@ -156,7 +156,7 @@ export default function TopHitsPage() {
                     const promises = [];
                     for (let page = 0; page < totalPages; page++) {
                         promises.push(
-                            fetch(`${process.env.NEXT_PUBLIC_API_URL}/search/playlists?query=top%20hits&page=${page}&limit=${limit}`)
+                            fetch(`${process.env.NEXT_PUBLIC_API_URL}/search/playlists?query=english%20top&page=${page}&limit=${limit}`)
                                 .then(response => response.json())
                         );
                     }
@@ -255,9 +255,10 @@ export default function TopHitsPage() {
                 <div className="flex-1 overflow-y-auto p-6">
                     <div className="space-y-6">
                         <div>
-                            <h1 className="text-4xl font-bold mb-2">Top Hits Playlists</h1>
+                            <h1 className="text-4xl font-bold mb-2">English Top Playlists
+                            </h1>
                             <p className="text-muted-foreground">
-                                Discover the most popular hits and classic playlists of all time
+                            Discover the best English music playlists across decades and genres
                             </p>
                         </div>
 

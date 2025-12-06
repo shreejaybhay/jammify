@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { AppSidebar } from "@/components/app-sidebar";
 import {
   Breadcrumb,
@@ -23,16 +24,19 @@ import { useLikedPlaylists } from "@/hooks/useLikedPlaylists";
 
 export default function PlaylistsPage() {
   const router = useRouter();
+  const { data: session } = useSession();
   const [likedPlaylistsData, setLikedPlaylistsData] = useState([]);
   const [hasLoaded, setHasLoaded] = useState(false);
 
   // Initialize liked playlists hook
-  const { toggleLike: togglePlaylistLike } = useLikedPlaylists('shree jaybhay');
+  const { toggleLike: togglePlaylistLike } = useLikedPlaylists(session?.user?.id);
 
   useEffect(() => {
     const fetchLikedPlaylists = async () => {
+      if (!session?.user?.id) return;
+
       try {
-        const response = await fetch('/api/liked-playlists?userId=shree jaybhay');
+        const response = await fetch(`/api/liked-playlists?userId=${session.user.id}`);
         const data = await response.json();
 
         if (data.success) {
@@ -46,7 +50,7 @@ export default function PlaylistsPage() {
     };
 
     fetchLikedPlaylists();
-  }, []);
+  }, [session?.user?.id]);
 
   const handlePlaylistClick = (playlistId) => {
     router.push(`/music/playlist/${playlistId}`);
@@ -54,10 +58,21 @@ export default function PlaylistsPage() {
 
   const handleUnlikePlaylist = async (playlist, e) => {
     e.stopPropagation();
+    if (!session?.user?.id) return;
+
     try {
-      await togglePlaylistLike(playlist);
+      // Transform the playlist data to match the expected format for the hook
+      const playlistForHook = {
+        id: playlist.playlistId,
+        name: playlist.playlistName,
+        description: playlist.description,
+        image: playlist.image,
+        songCount: playlist.songCount
+      };
+
+      await togglePlaylistLike(playlistForHook);
       // Refresh the list
-      const response = await fetch('/api/liked-playlists?userId=shree jaybhay');
+      const response = await fetch(`/api/liked-playlists?userId=${session.user.id}`);
       const data = await response.json();
       if (data.success) {
         setLikedPlaylistsData(data.data);

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { AppSidebar } from "@/components/app-sidebar";
 import {
   Breadcrumb,
@@ -25,10 +26,11 @@ import { useMusicPlayer } from "@/contexts/music-player-context";
 
 export default function FavoritesPage() {
   const router = useRouter();
+  const { data: session } = useSession();
   const [currentlyPlaying, setCurrentlyPlaying] = useState(null);
 
   // Initialize liked songs hook
-  const { likedSongs, loading, toggleLike, getLikedCount } = useLikedSongs('shree jaybhay');
+  const { likedSongs, loading, toggleLike, getLikedCount } = useLikedSongs(session?.user?.id);
 
   // Initialize music player
   const { playSong, currentSong, isPlaying } = useMusicPlayer();

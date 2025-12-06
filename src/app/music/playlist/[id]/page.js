@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { AppSidebar } from "@/components/app-sidebar";
 import {
   Breadcrumb,
@@ -28,6 +29,7 @@ function PlaylistPageContent() {
   const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();
+  const { data: session } = useSession();
   const playlistId = params.id;
   const songCount = searchParams.get('songCount') || 50;
 
@@ -37,14 +39,14 @@ function PlaylistPageContent() {
   const [currentlyPlaying, setCurrentlyPlaying] = useState(null);
   const [dominantColor, setDominantColor] = useState('rgb(34, 197, 94)'); // Default green
 
-  // Initialize liked songs hook with actual user name
-  const { toggleLike, isLiked } = useLikedSongs('shree jaybhay');
+  // Initialize liked songs hook with actual user ID from session
+  const { toggleLike, isLiked } = useLikedSongs(session?.user?.id);
 
   // Initialize liked playlists hook
   const {
     toggleLike: togglePlaylistLike,
     isLiked: isPlaylistLiked
-  } = useLikedPlaylists('shree jaybhay');
+  } = useLikedPlaylists(session?.user?.id);
 
   // Initialize music player
   const { playSong, currentSong, isPlaying } = useMusicPlayer();

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { AppSidebar } from "@/components/app-sidebar";
 import {
   Breadcrumb,
@@ -27,6 +28,7 @@ import { useMusicPlayer } from "@/contexts/music-player-context";
 export default function AlbumPage() {
   const router = useRouter();
   const params = useParams();
+  const { data: session } = useSession();
   const albumId = params.id;
 
   const [album, setAlbum] = useState(null);
@@ -34,11 +36,11 @@ export default function AlbumPage() {
   const [currentlyPlaying, setCurrentlyPlaying] = useState(null);
   const [dominantColor, setDominantColor] = useState('rgb(34, 197, 94)'); // Default green
 
-  // Initialize liked songs hook with actual user name
-  const { toggleLike, isLiked } = useLikedSongs('shree jaybhay');
+  // Initialize liked songs hook with actual user ID
+  const { toggleLike, isLiked } = useLikedSongs(session?.user?.id);
 
   // Initialize liked albums hook
-  const { toggleLike: toggleAlbumLike, isLiked: isAlbumLiked } = useLikedAlbums('shree jaybhay');
+  const { toggleLike: toggleAlbumLike, isLiked: isAlbumLiked } = useLikedAlbums(session?.user?.id);
 
   // Initialize music player
   const { playSong, currentSong, isPlaying } = useMusicPlayer();

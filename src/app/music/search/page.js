@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -27,6 +28,7 @@ import { useLikedSongs } from "@/hooks/useLikedSongs";
 function SearchPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { data: session } = useSession();
   const initialQuery = searchParams.get('q') || '';
 
   const [searchQuery, setSearchQuery] = useState(initialQuery);
@@ -35,7 +37,7 @@ function SearchPageContent() {
   const [activeTab, setActiveTab] = useState("all");
 
   const { playSong, currentSong, isPlaying } = useMusicPlayer();
-  const { toggleLike, isLiked } = useLikedSongs('shree jaybhay');
+  const { toggleLike, isLiked } = useLikedSongs(session?.user?.id);
 
   // Debounced search function
   const debounce = useCallback((func, delay) => {

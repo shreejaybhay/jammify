@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { AppSidebar } from "@/components/app-sidebar";
 import {
@@ -20,9 +20,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Play, ArrowLeft } from "lucide-react";
 
-export default function TopHitsPage() {
+export default function EnglishTopPage() {
     const router = useRouter();
-    const [topHits, setTopHits] = useState([]);
+    const [englishTop, setEnglishTop] = useState([]);
     const [displayedHits, setDisplayedHits] = useState([]);
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
@@ -35,16 +35,16 @@ export default function TopHitsPage() {
     // Save state to sessionStorage whenever it changes
     useEffect(() => {
         if (displayedHits.length > 0) {
-            sessionStorage.setItem('topHitsDisplayedHits', JSON.stringify(displayedHits));
-            sessionStorage.setItem('topHitsCurrentIndex', currentIndex.toString());
-            sessionStorage.setItem('topHitsHasMore', hasMore.toString());
+            sessionStorage.setItem('englishTopDisplayedHits', JSON.stringify(displayedHits));
+            sessionStorage.setItem('englishTopCurrentIndex', currentIndex.toString());
+            sessionStorage.setItem('englishTopHasMore', hasMore.toString());
         }
     }, [displayedHits, currentIndex, hasMore]);
 
     // Restore scroll position after content loads
     useEffect(() => {
         if (!loading && displayedHits.length > 0) {
-            const savedScrollPosition = sessionStorage.getItem('topHitsScrollPosition');
+            const savedScrollPosition = sessionStorage.getItem('englishTopScrollPosition');
             if (savedScrollPosition) {
                 const targetScrollPosition = parseInt(savedScrollPosition);
                 let hasUserScrolled = false;
@@ -58,7 +58,7 @@ export default function TopHitsPage() {
                     // Remove the scroll listener
                     window.removeEventListener('scroll', handleUserScroll);
                     // Clear the saved position so it doesn't interfere
-                    sessionStorage.removeItem('topHitsScrollPosition');
+                    sessionStorage.removeItem('englishTopScrollPosition');
                 };
 
                 const restoreScroll = () => {
@@ -78,27 +78,27 @@ export default function TopHitsPage() {
                 // Clean up after final attempt
                 restorationTimeouts.push(setTimeout(() => {
                     window.removeEventListener('scroll', handleUserScroll);
-                    sessionStorage.removeItem('topHitsScrollPosition');
+                    sessionStorage.removeItem('englishTopScrollPosition');
                 }, 1500));
             }
         }
     }, [loading, displayedHits.length]);
 
     // Load more items function
-    const loadMoreItems = () => {
+    const loadMoreItems = useCallback(() => {
         if (loadingMore || !hasMore) return;
 
         setLoadingMore(true);
         const nextIndex = currentIndex + ITEMS_PER_BATCH;
-        const nextBatch = topHits.slice(currentIndex, nextIndex);
+        const nextBatch = englishTop.slice(currentIndex, nextIndex);
 
         setTimeout(() => {
             setDisplayedHits(prev => [...prev, ...nextBatch]);
             setCurrentIndex(nextIndex);
-            setHasMore(nextIndex < topHits.length);
+            setHasMore(nextIndex < englishTop.length);
             setLoadingMore(false);
         }, 300); // Small delay for smooth loading
-    };
+    }, [loadingMore, hasMore, currentIndex, englishTop]);
 
     // Scroll event handler
     useEffect(() => {
@@ -110,45 +110,30 @@ export default function TopHitsPage() {
 
         window.addEventListener('scroll', handleScroll);
         return () => window.removeEventListener('scroll', handleScroll);
-    }, [currentIndex, topHits.length, loadingMore, hasMore]);
+    }, [loadMoreItems]);
 
     useEffect(() => {
-        const fetchAllTopHits = async () => {
+        // Clear any old cached data to force fresh fetch on every visit
+        sessionStorage.removeItem('englishTopDisplayedHits');
+        sessionStorage.removeItem('englishTopCurrentIndex');
+        sessionStorage.removeItem('englishTopHasMore');
+        sessionStorage.removeItem('englishTopAllData');
+
+        const fetchAllEnglishTop = async () => {
             try {
                 setLoading(true);
 
-                // Check for saved state first
-                const savedDisplayedHits = sessionStorage.getItem('topHitsDisplayedHits');
-                const savedCurrentIndex = sessionStorage.getItem('topHitsCurrentIndex');
-                const savedHasMore = sessionStorage.getItem('topHitsHasMore');
-                const savedAllData = sessionStorage.getItem('topHitsAllData');
-
-                // If we have saved data, restore it
-                if (savedDisplayedHits && savedCurrentIndex && savedAllData) {
-                    try {
-                        const parsedDisplayedHits = JSON.parse(savedDisplayedHits);
-                        const parsedAllData = JSON.parse(savedAllData);
-
-                        setTopHits(parsedAllData);
-                        setDisplayedHits(parsedDisplayedHits);
-                        setCurrentIndex(parseInt(savedCurrentIndex));
-                        setHasMore(savedHasMore === 'true');
-                        setLoading(false);
-                        return;
-                    } catch (error) {
-                        console.error('Error restoring saved state:', error);
-                        // Continue with fresh fetch if restoration fails
-                    }
-                }
-
                 // Fresh fetch if no saved data
-                const initialResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/search/playlists?query=top%20hits&page=0&limit=1`);
+                const initialResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/search/playlists?query=english%20top&page=0&limit=1`);
                 const initialData = await initialResponse.json();
 
                 if (initialData.success && initialData.data.total) {
                     const total = initialData.data.total;
+                    console.log('Total playlists available:', total);
+
                     const limit = 40; // API limit per request
                     const totalPages = Math.ceil(total / limit);
+                    console.log('Total pages to fetch:', totalPages);
 
                     let allPlaylists = [];
 
@@ -156,7 +141,7 @@ export default function TopHitsPage() {
                     const promises = [];
                     for (let page = 0; page < totalPages; page++) {
                         promises.push(
-                            fetch(`${process.env.NEXT_PUBLIC_API_URL}/search/playlists?query=top%20hits&page=${page}&limit=${limit}`)
+                            fetch(`${process.env.NEXT_PUBLIC_API_URL}/search/playlists?query=english%20top&page=${page}&limit=${limit}`)
                                 .then(response => response.json())
                         );
                     }
@@ -164,36 +149,44 @@ export default function TopHitsPage() {
                     const responses = await Promise.all(promises);
 
                     // Combine all results
-                    responses.forEach(data => {
+                    responses.forEach((data, index) => {
                         if (data.success && data.data.results) {
+                            console.log(`Page ${index} returned ${data.data.results.length} playlists`);
                             allPlaylists = [...allPlaylists, ...data.data.results];
                         }
                     });
+
+                    console.log('Total playlists before deduplication:', allPlaylists.length);
 
                     // Remove duplicates based on playlist id
                     const uniquePlaylists = allPlaylists.filter((playlist, index, self) =>
                         index === self.findIndex(p => p.id === playlist.id)
                     );
 
-                    setTopHits(uniquePlaylists);
+                    console.log('Total unique playlists after deduplication:', uniquePlaylists.length);
+
+                    setEnglishTop(uniquePlaylists);
 
                     // Save all data for future use
-                    sessionStorage.setItem('topHitsAllData', JSON.stringify(uniquePlaylists));
+                    sessionStorage.setItem('englishTopAllData', JSON.stringify(uniquePlaylists));
 
                     // Set initial batch for fresh visits
                     const initialBatch = uniquePlaylists.slice(0, ITEMS_PER_BATCH);
                     setDisplayedHits(initialBatch);
                     setCurrentIndex(ITEMS_PER_BATCH);
                     setHasMore(ITEMS_PER_BATCH < uniquePlaylists.length);
+
+                    console.log('Initial batch size:', initialBatch.length);
+                    console.log('Has more items:', ITEMS_PER_BATCH < uniquePlaylists.length);
                 }
             } catch (error) {
-                console.error('Error fetching top hits:', error);
+                console.error('Error fetching english top playlists:', error);
             } finally {
                 setLoading(false);
             }
         };
 
-        fetchAllTopHits();
+        fetchAllEnglishTop();
     }, []);
 
     const handlePlayClick = (item, type) => {
@@ -203,7 +196,7 @@ export default function TopHitsPage() {
 
     const handleCardClick = (playlist) => {
         // Save scroll position before navigating
-        sessionStorage.setItem('topHitsScrollPosition', window.scrollY.toString());
+        sessionStorage.setItem('englishTopScrollPosition', window.scrollY.toString());
 
         // Navigate to playlist detail page with songCount as query parameter
         router.push(`/music/playlist/${playlist.id}?songCount=${playlist.songCount || 50}`);
@@ -245,7 +238,7 @@ export default function TopHitsPage() {
                                 </BreadcrumbItem>
                                 <BreadcrumbSeparator className="hidden md:block" />
                                 <BreadcrumbItem>
-                                    <BreadcrumbPage>Top Hits</BreadcrumbPage>
+                                    <BreadcrumbPage>English Top</BreadcrumbPage>
                                 </BreadcrumbItem>
                             </BreadcrumbList>
                         </Breadcrumb>
@@ -255,9 +248,9 @@ export default function TopHitsPage() {
                 <div className="flex-1 overflow-y-auto p-6">
                     <div className="space-y-6">
                         <div>
-                            <h1 className="text-4xl font-bold mb-2">Top Hits Playlists</h1>
+                            <h1 className="text-4xl font-bold mb-2">English Top Playlists</h1>
                             <p className="text-muted-foreground">
-                                Discover the most popular hits and classic playlists of all time
+                                Discover the best English music playlists across decades and genres
                             </p>
                         </div>
 
@@ -280,22 +273,23 @@ export default function TopHitsPage() {
                                             className="group cursor-pointer hover:scale-105 transition-transform"
                                             onClick={() => handleCardClick(playlist)}
                                         >
-                                            <div className="relative rounded-lg aspect-square overflow-hidden mb-3 bg-muted">
+                                            <div className="relative rounded-lg aspect-square overflow-hidden mb-3 bg-gradient-to-br from-green-500 to-emerald-600">
                                                 {playlist.image?.[2]?.url || playlist.image?.[1]?.url || playlist.image?.[0]?.url ? (
                                                     <img
                                                         src={playlist.image?.[2]?.url || playlist.image?.[1]?.url || playlist.image?.[0]?.url}
                                                         alt={playlist.name}
-                                                        className="w-full h-full object-cover transition-opacity duration-300"
-                                                        style={{ opacity: 0 }}
+                                                        className="w-full h-full object-cover"
                                                         onError={(e) => {
+                                                            console.log('Image failed to load:', e.target.src);
                                                             e.target.style.display = 'none';
+                                                            // Show the gradient background instead
                                                         }}
-                                                        onLoad={(e) => {
-                                                            e.target.style.opacity = 1;
+                                                        onLoad={() => {
+                                                            console.log('Image loaded successfully');
                                                         }}
                                                     />
                                                 ) : (
-                                                    <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                                                    <div className="w-full h-full flex items-center justify-center text-white">
                                                         <Play className="w-12 h-12 opacity-50" />
                                                     </div>
                                                 )}
@@ -360,9 +354,9 @@ export default function TopHitsPage() {
                             </>
                         )}
 
-                        {!loading && topHits.length === 0 && (
+                        {!loading && displayedHits.length === 0 && (
                             <div className="text-center py-12">
-                                <p className="text-muted-foreground">No top hits found</p>
+                                <p className="text-muted-foreground">No English top playlists found</p>
                             </div>
                         )}
 

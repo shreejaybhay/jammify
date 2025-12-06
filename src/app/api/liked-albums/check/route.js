@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import LikedAlbum from '@/models/LikedAlbum';
+import mongoose from 'mongoose';
 
 // GET - Check if a specific album is liked by a user
 export async function GET(request) {
@@ -17,8 +18,16 @@ export async function GET(request) {
         { status: 400 }
       );
     }
+
+    // Validate and convert userId to ObjectId
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid user ID format' },
+        { status: 400 }
+      );
+    }
     
-    const likedAlbum = await LikedAlbum.isLiked(userId, albumId);
+    const likedAlbum = await LikedAlbum.isLiked(new mongoose.Types.ObjectId(userId), albumId);
     
     return NextResponse.json({
       success: true,
