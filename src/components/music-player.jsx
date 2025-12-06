@@ -5,12 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Play, Pause, SkipBack, SkipForward, Volume2 } from "lucide-react";
 import { useMusicPlayer } from "@/contexts/music-player-context";
+import { FullscreenMusicPlayer } from "@/components/fullscreen-music-player";
 
 export function MusicPlayer({ currentSong, playlist = [], onSongChange }) {
   const { isPlaying, setIsPlaying } = useMusicPlayer();
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(0.7);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const audioRef = useRef(null);
 
   // Find current song index in playlist
@@ -66,7 +68,7 @@ export function MusicPlayer({ currentSong, playlist = [], onSongChange }) {
     };
   }, [currentSong]);
 
-  // Auto-play when isPlaying becomes true
+  // Auto-play when isPlaying becomes true or song changes
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio || !currentSong) return;
@@ -139,17 +141,55 @@ export function MusicPlayer({ currentSong, playlist = [], onSongChange }) {
     return textarea.value;
   };
 
+  // Determine the context of where music is playing from
+  const getPlayingFromContext = () => {
+    if (typeof window === 'undefined') return 'Music';
+    
+    const currentPath = window.location.pathname;
+    const searchParams = new URLSearchParams(window.location.search);
+    
+    // Check current route and determine context
+    if (currentPath.includes('/search')) {
+      return 'Search Results';
+    } else if (currentPath.includes('/album/')) {
+      return currentSong?.album?.name || 'Album';
+    } else if (currentPath.includes('/artist/')) {
+      const artistName = currentSong?.artists?.primary?.[0]?.name || 'Artist';
+      return `${artistName}`;
+    } else if (currentPath.includes('/playlist/')) {
+      return 'Playlist';
+    } else if (currentPath.includes('/favorites')) {
+      return 'Liked Songs';
+    } else if (currentPath.includes('/library/albums')) {
+      return 'Your Albums';
+    } else if (currentPath.includes('/library/artists')) {
+      return 'Your Artists';
+    } else if (currentPath.includes('/library/playlists')) {
+      return 'Your Playlists';
+    } else if (currentPath.includes('/discover')) {
+      return 'Discover';
+    } else if (currentPath.includes('/new-releases')) {
+      return 'New Releases';
+    } else {
+      return 'Music';
+    }
+  };
+
   if (!currentSong) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 md:left-64 bg-background border-t border-border z-50">
-      <audio ref={audioRef} />
+    <>
+      <div className="fixed bottom-0 left-0 right-0 md:left-64 bg-background border-t border-border z-50">
+        <audio ref={audioRef} />
 
       {/* Mobile Layout */}
       <div className="block md:hidden">
         {/* Top row: Song info and main controls */}
         <div className="flex items-center justify-between p-3 pb-2">
-          <div className="flex items-center gap-3 min-w-0 flex-1">
+          <div 
+            className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer"
+            onClick={() => setIsFullscreen(true)}
+          >
             <div className="w-10 h-10 rounded bg-gradient-to-br from-purple-500 to-pink-500 flex-shrink-0">
               {currentSong.image?.[0]?.url ? (
                 <img
@@ -234,7 +274,10 @@ export function MusicPlayer({ currentSong, playlist = [], onSongChange }) {
       <div className="hidden md:block p-3">
         <div className="flex items-center gap-4 w-full">
           {/* Song Info */}
-          <div className="flex items-center gap-3 min-w-0 flex-1">
+          <div 
+            className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer hover:bg-muted/50 rounded-lg p-2 -m-2 transition-colors"
+            onClick={() => setIsFullscreen(true)}
+          >
             <div className="w-12 h-12 rounded bg-gradient-to-br from-purple-500 to-pink-500 flex-shrink-0">
               {currentSong.image?.[0]?.url ? (
                 <img
@@ -325,5 +368,26 @@ export function MusicPlayer({ currentSong, playlist = [], onSongChange }) {
         </div>
       </div>
     </div>
+
+    {/* Fullscreen Music Player */}
+    <FullscreenMusicPlayer
+      currentSong={currentSong}
+      playlist={playlist}
+      onSongChange={onSongChange}
+      isOpen={isFullscreen}
+      onClose={() => setIsFullscreen(false)}
+      audioRef={audioRef}
+      currentTime={currentTime}
+      duration={duration}
+      volume={volume}
+      onVolumeChange={handleVolumeChange}
+      onSeek={handleSeek}
+      onTogglePlayPause={togglePlayPause}
+      onPrevious={handlePrevious}
+      onNext={handleNext}
+      isPlaying={isPlaying}
+      playingFrom={getPlayingFromContext()}
+    />
+    </>
   );
 }

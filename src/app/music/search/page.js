@@ -187,23 +187,51 @@ function SearchPageContent() {
   }, [searchQuery, debouncedSearch]);
 
   const handlePlayClick = async (song, playlist = []) => {
-    // If the song doesn't have detailed data (no downloadUrl), fetch it
-    if (!song.downloadUrl && song.id) {
-      try {
+    try {
+      // Always fetch detailed data for the current song if it doesn't have downloadUrl
+      let detailedCurrentSong = song;
+      if (!song.downloadUrl && song.id) {
         const response = await fetch(`https://jiosaavn-api-blush.vercel.app/api/songs/${song.id}`);
         const data = await response.json();
 
         if (data.success && data.data && data.data.length > 0) {
-          const detailedSong = data.data[0];
-          playSong(detailedSong, playlist);
-          return;
+          detailedCurrentSong = data.data[0];
         }
-      } catch (error) {
-        console.error('Error fetching song details:', error);
       }
-    }
 
-    playSong(song, playlist);
+      // Create a detailed playlist by fetching complete data for songs that need it
+      const detailedPlaylist = await Promise.all(
+        playlist.map(async (playlistSong) => {
+          // If the song already has downloadUrl, return it as is
+          if (playlistSong.downloadUrl) {
+            return playlistSong;
+          }
+
+          // If no downloadUrl, fetch detailed data
+          if (playlistSong.id) {
+            try {
+              const response = await fetch(`https://jiosaavn-api-blush.vercel.app/api/songs/${playlistSong.id}`);
+              const data = await response.json();
+
+              if (data.success && data.data && data.data.length > 0) {
+                return data.data[0];
+              }
+            } catch (error) {
+              console.error(`Error fetching details for song ${playlistSong.id}:`, error);
+            }
+          }
+
+          // Fallback: return the original song if detailed fetch fails
+          return playlistSong;
+        })
+      );
+
+      playSong(detailedCurrentSong, detailedPlaylist);
+    } catch (error) {
+      console.error('Error in handlePlayClick:', error);
+      // Fallback: play with original data
+      playSong(song, playlist);
+    }
   };
 
   const handleArtistClick = async (artistId, artistName = null) => {
@@ -315,47 +343,49 @@ function SearchPageContent() {
 
         <div className="flex flex-1 flex-col pb-24">
           {/* Search Input */}
-          <div className="p-6 pb-4">
-            <div className="relative max-w-md">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+          <div className="p-4 sm:p-6 pb-4">
+            <div className="relative w-full max-w-2xl mx-auto">
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
               <Input
                 placeholder="What do you want to listen to?"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 bg-muted/50 border-0 h-12 text-base"
+                className="pl-12 pr-4 bg-muted/50 border-0 h-12 sm:h-14 text-base sm:text-lg rounded-full focus:bg-muted/70 transition-colors"
               />
             </div>
           </div>
 
           {searchResults && (
-            <div className="px-6 relative">
+            <div className="px-4 sm:px-6 relative">
               {loading && (
-                <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-10 flex items-center justify-center">
+                <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-10 flex items-center justify-center rounded-lg">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                 </div>
               )}
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid w-full max-w-md grid-cols-5 mb-6">
-                  <TabsTrigger value="all">All</TabsTrigger>
-                  <TabsTrigger value="songs">Songs</TabsTrigger>
-                  <TabsTrigger value="albums">Albums</TabsTrigger>
-                  <TabsTrigger value="artists">Artists</TabsTrigger>
-                  <TabsTrigger value="playlists">Playlists</TabsTrigger>
-                </TabsList>
+                <div className="overflow-x-auto scrollbar-hide mb-6">
+                  <TabsList className="grid w-full min-w-[400px] sm:max-w-lg grid-cols-5 h-10 sm:h-12">
+                    <TabsTrigger value="all" className="text-xs sm:text-sm">All</TabsTrigger>
+                    <TabsTrigger value="songs" className="text-xs sm:text-sm">Songs</TabsTrigger>
+                    <TabsTrigger value="albums" className="text-xs sm:text-sm">Albums</TabsTrigger>
+                    <TabsTrigger value="artists" className="text-xs sm:text-sm">Artists</TabsTrigger>
+                    <TabsTrigger value="playlists" className="text-xs sm:text-sm">Playlists</TabsTrigger>
+                  </TabsList>
+                </div>
 
-                <TabsContent value="all" className="space-y-8">
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <TabsContent value="all" className="space-y-6 sm:space-y-8">
+                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 sm:gap-8">
                     {/* Top Result */}
                     {(searchResults.topQuery || (searchResults.songs?.results?.length > 0)) && (
-                      <div>
-                        <h2 className="text-2xl font-bold mb-6">Top result</h2>
+                      <div className="xl:col-span-1">
+                        <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Top result</h2>
                         {(() => {
                           const topResult = searchResults.topQuery || searchResults.songs.results[0];
                           const resultType = topResult.type || 'song';
 
                           return (
                             <div
-                              className="bg-muted/30 rounded-lg p-6 relative overflow-hidden cursor-pointer group hover:bg-muted/40 transition-colors"
+                              className="bg-gradient-to-br from-muted/40 to-muted/20 rounded-xl p-4 sm:p-6 relative overflow-hidden cursor-pointer group hover:from-muted/50 hover:to-muted/30 transition-all duration-300 border border-muted/20"
                               onClick={() => {
                                 if (resultType === 'song') {
                                   handlePlayClick(topResult, searchResults.songs?.results || [topResult]);
@@ -368,7 +398,7 @@ function SearchPageContent() {
                             >
                               <div className="relative z-10">
                                 <div className="mb-4">
-                                  <div className="w-24 h-24 rounded-lg bg-muted overflow-hidden">
+                                  <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl bg-muted overflow-hidden shadow-lg">
                                     {topResult.image?.[2]?.url ? (
                                       <img
                                         src={topResult.image[2].url}
@@ -377,25 +407,25 @@ function SearchPageContent() {
                                       />
                                     ) : (
                                       <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-500 to-pink-500">
-                                        <Play className="w-8 h-8 text-white/70" />
+                                        <Play className="w-6 h-6 sm:w-8 sm:h-8 text-white/70" />
                                       </div>
                                     )}
                                   </div>
                                 </div>
 
                                 <div className="space-y-2">
-                                  <h3 className="text-4xl font-bold leading-tight">
+                                  <h3 className="text-2xl sm:text-3xl xl:text-4xl font-bold leading-tight line-clamp-2">
                                     {decodeHtmlEntities(topResult.title)}
                                   </h3>
 
                                   <div className="flex items-center gap-2 text-muted-foreground">
-                                    <span className="capitalize text-sm font-medium">
+                                    <span className="capitalize text-xs sm:text-sm font-medium bg-primary/10 text-primary px-2 py-1 rounded-full">
                                       {resultType}
                                     </span>
                                     {(topResult.primaryArtists || topResult.artist) && (
                                       <>
                                         <span className="text-sm">•</span>
-                                        <span className="text-sm">
+                                        <span className="text-xs sm:text-sm truncate">
                                           {getArtistNames(topResult)}
                                         </span>
                                       </>
@@ -406,7 +436,7 @@ function SearchPageContent() {
 
                               <Button
                                 size="icon"
-                                className="absolute bottom-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity bg-green-500 hover:bg-green-600 rounded-full w-14 h-14"
+                                className="absolute bottom-4 right-4 sm:bottom-6 sm:right-6 opacity-0 group-hover:opacity-100 transition-all duration-300 bg-green-500 hover:bg-green-600 hover:scale-110 rounded-full w-12 h-12 sm:w-14 sm:h-14 shadow-lg"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   if (resultType === 'song') {
@@ -414,7 +444,7 @@ function SearchPageContent() {
                                   }
                                 }}
                               >
-                                <Play className="w-6 h-6 ml-0.5" />
+                                <Play className="w-5 h-5 sm:w-6 sm:h-6 ml-0.5" />
                               </Button>
                             </div>
                           );
@@ -424,20 +454,20 @@ function SearchPageContent() {
 
                     {/* Songs Section */}
                     {searchResults.songs?.results?.length > 0 && (
-                      <div>
-                        <h2 className="text-2xl font-bold mb-6">Songs</h2>
-                        <div className="space-y-1">
+                      <div className="xl:col-span-1">
+                        <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Songs</h2>
+                        <div className="space-y-2">
                           {searchResults.songs.results.slice(0, 4).map((song, index) => {
                             const isCurrentSong = currentSong?.id === song.id;
                             return (
                               <div
                                 key={song.id || index}
-                                className={`flex items-center gap-3 p-3 rounded-lg hover:bg-muted/30 group cursor-pointer transition-colors ${isCurrentSong ? 'bg-muted/30' : ''
+                                className={`flex items-center gap-3 p-2 sm:p-3 rounded-xl hover:bg-muted/40 group cursor-pointer transition-all duration-200 ${isCurrentSong ? 'bg-muted/40 ring-1 ring-green-500/20' : ''
                                   }`}
                                 onClick={() => handlePlayClick(song, searchResults.songs.results)}
                               >
-                                <div className="relative">
-                                  <div className="w-10 h-10 rounded bg-muted overflow-hidden">
+                                <div className="relative flex-shrink-0">
+                                  <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg bg-muted overflow-hidden shadow-sm">
                                     {song.image?.[1]?.url ? (
                                       <img
                                         src={song.image[1].url}
@@ -446,31 +476,33 @@ function SearchPageContent() {
                                       />
                                     ) : (
                                       <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-500 to-pink-500">
-                                        <Play className="w-3 h-3 text-white/70" />
+                                        <Play className="w-4 h-4 text-white/70" />
                                       </div>
                                     )}
                                   </div>
                                   {isCurrentSong && isPlaying && (
-                                    <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded">
-                                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                                    <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg">
+                                      <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
                                     </div>
                                   )}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <p className={`font-medium truncate ${isCurrentSong ? 'text-green-500' : ''
+                                  <p className={`font-medium truncate text-sm sm:text-base ${isCurrentSong ? 'text-green-500' : ''
                                     }`}>
                                     {decodeHtmlEntities(song.title || song.name)}
                                   </p>
-                                  <p className={`text-sm truncate ${isCurrentSong ? 'text-green-400' : 'text-muted-foreground'
+                                  <p className={`text-xs sm:text-sm truncate ${isCurrentSong ? 'text-green-400' : 'text-muted-foreground'
                                     }`}>
                                     {getArtistNames(song)}
                                   </p>
                                 </div>
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 flex-shrink-0">
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    className={`opacity-0 group-hover:opacity-100 transition-opacity p-1 h-6 w-6 ${isLiked(song.id) ? 'text-green-500 opacity-100' : ''
+                                    className={`transition-opacity p-1.5 h-8 w-8 hover:bg-muted/60 ${isLiked(song.id) || isCurrentSong
+                                      ? 'opacity-100 text-red-500'
+                                      : 'opacity-0 group-hover:opacity-100'
                                       }`}
                                     onClick={async (e) => {
                                       e.stopPropagation();
@@ -511,13 +543,13 @@ function SearchPageContent() {
                                     }}
                                   >
                                     {isLiked(song.id) ? (
-                                      <Heart className="w-3 h-3 fill-red-500 text-red-500" />
+                                      <Heart className="w-4 h-4 fill-red-500 text-red-500" />
                                     ) : (
-                                      <Heart className="w-3 h-3" />
+                                      <Heart className="w-4 h-4" />
                                     )}
                                   </Button>
                                   {song.duration ? (
-                                    <span className="text-xs text-muted-foreground min-w-[35px] text-right">
+                                    <span className="text-xs text-muted-foreground min-w-[35px] text-right font-mono">
                                       {formatDuration(song.duration)}
                                     </span>
                                   ) : null}
@@ -533,15 +565,15 @@ function SearchPageContent() {
                   {/* Artists Section */}
                   {searchResults.artists?.results?.length > 0 && (
                     <div>
-                      <h2 className="text-2xl font-bold mb-4">Artists</h2>
-                      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                        {searchResults.artists.results.slice(0, 6).map((artist, index) => (
+                      <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Artists</h2>
+                      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-3 sm:gap-4">
+                        {searchResults.artists.results.slice(0, 8).map((artist, index) => (
                           <div
                             key={artist.id || index}
-                            className="text-center group cursor-pointer"
+                            className="text-center group cursor-pointer hover:scale-105 transition-transform duration-200"
                             onClick={() => handleArtistClick(artist.id, artist.title || artist.name)}
                           >
-                            <div className="w-full aspect-square rounded-full bg-muted mb-3 overflow-hidden">
+                            <div className="w-full aspect-square rounded-full bg-muted mb-2 sm:mb-3 overflow-hidden shadow-md group-hover:shadow-lg transition-shadow">
                               {(() => {
                                 // Try different image sizes: high quality first, then medium, then low
                                 const imageUrl = artist.image?.[2]?.url || artist.image?.[1]?.url || artist.image?.[0]?.url;
@@ -551,7 +583,7 @@ function SearchPageContent() {
                                     <img
                                       src={imageUrl}
                                       alt={artist.title}
-                                      className="w-full h-full object-cover"
+                                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                                       onError={(e) => {
                                         // If image fails to load, show gradient fallback
                                         e.target.style.display = 'none';
@@ -563,19 +595,19 @@ function SearchPageContent() {
 
                                 return (
                                   <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-500 to-purple-600">
-                                    <div className="text-white text-2xl font-bold">
+                                    <div className="text-white text-lg sm:text-2xl font-bold">
                                       {artist.title?.charAt(0)?.toUpperCase() || 'A'}
                                     </div>
                                   </div>
                                 );
                               })()}
                               <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-500 to-purple-600" style={{ display: 'none' }}>
-                                <div className="text-white text-2xl font-bold">
+                                <div className="text-white text-lg sm:text-2xl font-bold">
                                   {artist.title?.charAt(0)?.toUpperCase() || 'A'}
                                 </div>
                               </div>
                             </div>
-                            <p className="font-medium truncate text-sm">
+                            <p className="font-medium truncate text-xs sm:text-sm">
                               {decodeHtmlEntities(artist.title)}
                             </p>
                             <p className="text-xs text-muted-foreground">Artist</p>
@@ -588,28 +620,28 @@ function SearchPageContent() {
                   {/* Albums Section */}
                   {searchResults.albums?.results?.length > 0 && (
                     <div>
-                      <h2 className="text-2xl font-bold mb-4">Albums</h2>
-                      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                      <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Albums</h2>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
                         {searchResults.albums.results.slice(0, 6).map((album, index) => (
                           <div
                             key={album.id || index}
-                            className="group cursor-pointer"
+                            className="group cursor-pointer hover:scale-105 transition-transform duration-200"
                             onClick={() => handleAlbumClick(album.id)}
                           >
-                            <div className="w-full aspect-square rounded-lg bg-muted mb-3 overflow-hidden">
+                            <div className="w-full aspect-square rounded-xl bg-muted mb-3 overflow-hidden shadow-md group-hover:shadow-lg transition-shadow">
                               {album.image?.[2]?.url ? (
                                 <img
                                   src={album.image[2].url}
                                   alt={album.title}
-                                  className="w-full h-full object-cover"
+                                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                                 />
                               ) : (
                                 <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-500 to-pink-500">
-                                  <Play className="w-8 h-8 text-white/70" />
+                                  <Play className="w-6 h-6 sm:w-8 sm:h-8 text-white/70" />
                                 </div>
                               )}
                             </div>
-                            <p className="font-medium truncate text-sm">
+                            <p className="font-medium truncate text-xs sm:text-sm mb-1">
                               {decodeHtmlEntities(album.title)}
                             </p>
                             <p className="text-xs text-muted-foreground truncate">
@@ -624,28 +656,28 @@ function SearchPageContent() {
                   {/* Playlists Section */}
                   {searchResults.playlists?.results?.length > 0 && (
                     <div>
-                      <h2 className="text-2xl font-bold mb-4">Playlists</h2>
-                      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                      <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Playlists</h2>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
                         {searchResults.playlists.results.slice(0, 6).map((playlist, index) => (
                           <div
                             key={playlist.id || index}
-                            className="group cursor-pointer"
+                            className="group cursor-pointer hover:scale-105 transition-transform duration-200"
                             onClick={() => handlePlaylistClick(playlist.id)}
                           >
-                            <div className="w-full aspect-square rounded-lg bg-muted mb-3 overflow-hidden">
+                            <div className="w-full aspect-square rounded-xl bg-muted mb-3 overflow-hidden shadow-md group-hover:shadow-lg transition-shadow">
                               {playlist.image?.[2]?.url ? (
                                 <img
                                   src={playlist.image[2].url}
                                   alt={playlist.title}
-                                  className="w-full h-full object-cover"
+                                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                                 />
                               ) : (
                                 <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-500 to-pink-500">
-                                  <Play className="w-8 h-8 text-white/70" />
+                                  <Play className="w-6 h-6 sm:w-8 sm:h-8 text-white/70" />
                                 </div>
                               )}
                             </div>
-                            <p className="font-medium truncate text-sm">
+                            <p className="font-medium truncate text-xs sm:text-sm mb-1">
                               {decodeHtmlEntities(playlist.title)}
                             </p>
                             <p className="text-xs text-muted-foreground truncate">
@@ -661,18 +693,18 @@ function SearchPageContent() {
                 {/* Songs Tab */}
                 <TabsContent value="songs">
                   {searchResults.songs?.results?.length > 0 ? (
-                    <div className="space-y-1">
+                    <div className="space-y-2">
                       {searchResults.songs.results.map((song, index) => {
                         const isCurrentSong = currentSong?.id === song.id;
                         return (
                           <div
                             key={song.id || index}
-                            className={`flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 group cursor-pointer ${isCurrentSong ? 'bg-muted/30' : ''
+                            className={`flex items-center gap-3 p-3 sm:p-4 rounded-xl hover:bg-muted/40 group cursor-pointer transition-all duration-200 ${isCurrentSong ? 'bg-muted/40 ring-1 ring-green-500/20' : ''
                               }`}
                             onClick={() => handlePlayClick(song, searchResults.songs.results)}
                           >
-                            <div className="relative">
-                              <div className="w-12 h-12 rounded bg-muted overflow-hidden">
+                            <div className="relative flex-shrink-0">
+                              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl bg-muted overflow-hidden shadow-sm">
                                 {song.image?.[1]?.url ? (
                                   <img
                                     src={song.image[1].url}
@@ -681,31 +713,33 @@ function SearchPageContent() {
                                   />
                                 ) : (
                                   <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-500 to-pink-500">
-                                    <Play className="w-4 h-4 text-white/70" />
+                                    <Play className="w-5 h-5 text-white/70" />
                                   </div>
                                 )}
                               </div>
                               {isCurrentSong && isPlaying && (
-                                <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded">
-                                  <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-xl">
+                                  <div className="w-4 h-4 bg-green-500 rounded-full animate-pulse"></div>
                                 </div>
                               )}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className={`font-medium truncate ${isCurrentSong ? 'text-green-500' : ''
+                              <p className={`font-semibold truncate text-base sm:text-lg ${isCurrentSong ? 'text-green-500' : ''
                                 }`}>
                                 {decodeHtmlEntities(song.title)}
                               </p>
-                              <p className={`text-sm truncate ${isCurrentSong ? 'text-green-400' : 'text-muted-foreground'
+                              <p className={`text-sm sm:text-base truncate ${isCurrentSong ? 'text-green-400' : 'text-muted-foreground'
                                 }`}>
                                 {getArtistNames(song)}
                               </p>
                             </div>
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-3 flex-shrink-0">
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className={`opacity-0 group-hover:opacity-100 transition-opacity p-1 h-8 w-8 ${isLiked(song.id) ? 'text-green-500 opacity-100' : ''
+                                className={`transition-opacity p-2 h-10 w-10 hover:bg-muted/60 ${isLiked(song.id) || isCurrentSong
+                                  ? 'opacity-100 text-red-500'
+                                  : 'opacity-0 group-hover:opacity-100'
                                   }`}
                                 onClick={async (e) => {
                                   e.stopPropagation();
@@ -746,13 +780,13 @@ function SearchPageContent() {
                                 }}
                               >
                                 {isLiked(song.id) ? (
-                                  <Heart className="w-4 h-4 fill-red-500 text-red-500" />
+                                  <Heart className="w-5 h-5 fill-red-500 text-red-500" />
                                 ) : (
-                                  <Heart className="w-4 h-4" />
+                                  <Heart className="w-5 h-5" />
                                 )}
                               </Button>
                               {song.duration ? (
-                                <span className="text-sm text-muted-foreground min-w-[40px] text-right">
+                                <span className="text-sm text-muted-foreground min-w-[45px] text-right font-mono">
                                   {formatDuration(song.duration)}
                                 </span>
                               ) : null}
@@ -762,8 +796,12 @@ function SearchPageContent() {
                       })}
                     </div>
                   ) : (
-                    <div className="text-center py-12">
-                      <p className="text-muted-foreground">No songs found</p>
+                    <div className="text-center py-20">
+                      <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted/50 flex items-center justify-center">
+                        <Search className="w-8 h-8 text-muted-foreground" />
+                      </div>
+                      <p className="text-lg font-medium text-muted-foreground">No songs found</p>
+                      <p className="text-sm text-muted-foreground mt-1">Try searching with different keywords</p>
                     </div>
                   )}
                 </TabsContent>
@@ -771,19 +809,19 @@ function SearchPageContent() {
                 {/* Albums Tab */}
                 <TabsContent value="albums">
                   {searchResults.albums?.results?.length > 0 ? (
-                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4 sm:gap-6">
                       {searchResults.albums.results.map((album, index) => (
                         <div
                           key={album.id || index}
-                          className="group cursor-pointer"
+                          className="group cursor-pointer hover:scale-105 transition-transform duration-200"
                           onClick={() => handleAlbumClick(album.id)}
                         >
-                          <div className="w-full aspect-square rounded-lg bg-muted mb-3 overflow-hidden">
+                          <div className="w-full aspect-square rounded-xl bg-muted mb-3 overflow-hidden shadow-lg group-hover:shadow-xl transition-shadow">
                             {album.image?.[2]?.url ? (
                               <img
                                 src={album.image[2].url}
                                 alt={album.title}
-                                className="w-full h-full object-cover"
+                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                               />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-500 to-pink-500">
@@ -791,18 +829,22 @@ function SearchPageContent() {
                               </div>
                             )}
                           </div>
-                          <p className="font-medium truncate text-sm">
+                          <p className="font-semibold truncate text-sm sm:text-base mb-1">
                             {decodeHtmlEntities(album.title)}
                           </p>
-                          <p className="text-xs text-muted-foreground truncate">
+                          <p className="text-xs sm:text-sm text-muted-foreground truncate">
                             {album.year} • {getArtistNames(album)}
                           </p>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <div className="text-center py-12">
-                      <p className="text-muted-foreground">No albums found</p>
+                    <div className="text-center py-20">
+                      <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted/50 flex items-center justify-center">
+                        <Search className="w-8 h-8 text-muted-foreground" />
+                      </div>
+                      <p className="text-lg font-medium text-muted-foreground">No albums found</p>
+                      <p className="text-sm text-muted-foreground mt-1">Try searching with different keywords</p>
                     </div>
                   )}
                 </TabsContent>
@@ -810,36 +852,59 @@ function SearchPageContent() {
                 {/* Artists Tab */}
                 <TabsContent value="artists">
                   {searchResults.artists?.results?.length > 0 ? (
-                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4 sm:gap-6">
                       {searchResults.artists.results.map((artist, index) => (
                         <div
                           key={artist.id || index}
-                          className="text-center group cursor-pointer"
-                          onClick={() => handleArtistClick(artist.id)}
+                          className="text-center group cursor-pointer hover:scale-105 transition-transform duration-200"
+                          onClick={() => handleArtistClick(artist.id, artist.title || artist.name)}
                         >
-                          <div className="w-full aspect-square rounded-full bg-muted mb-3 overflow-hidden">
-                            {artist.image?.[2]?.url ? (
-                              <img
-                                src={artist.image[2].url}
-                                alt={artist.title}
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-500 to-pink-500">
-                                <Play className="w-8 h-8 text-white/70" />
+                          <div className="w-full aspect-square rounded-full bg-muted mb-3 overflow-hidden shadow-lg group-hover:shadow-xl transition-shadow">
+                            {(() => {
+                              const imageUrl = artist.image?.[2]?.url || artist.image?.[1]?.url || artist.image?.[0]?.url;
+
+                              if (imageUrl) {
+                                return (
+                                  <img
+                                    src={imageUrl}
+                                    alt={artist.title}
+                                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                                    onError={(e) => {
+                                      e.target.style.display = 'none';
+                                      e.target.nextSibling.style.display = 'flex';
+                                    }}
+                                  />
+                                );
+                              }
+
+                              return (
+                                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-500 to-purple-600">
+                                  <div className="text-white text-2xl font-bold">
+                                    {artist.title?.charAt(0)?.toUpperCase() || 'A'}
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-500 to-purple-600" style={{ display: 'none' }}>
+                              <div className="text-white text-2xl font-bold">
+                                {artist.title?.charAt(0)?.toUpperCase() || 'A'}
                               </div>
-                            )}
+                            </div>
                           </div>
-                          <p className="font-medium truncate">
+                          <p className="font-semibold truncate text-sm sm:text-base mb-1">
                             {decodeHtmlEntities(artist.title)}
                           </p>
-                          <p className="text-sm text-muted-foreground">Artist</p>
+                          <p className="text-xs sm:text-sm text-muted-foreground">Artist</p>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <div className="text-center py-12">
-                      <p className="text-muted-foreground">No artists found</p>
+                    <div className="text-center py-20">
+                      <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted/50 flex items-center justify-center">
+                        <Search className="w-8 h-8 text-muted-foreground" />
+                      </div>
+                      <p className="text-lg font-medium text-muted-foreground">No artists found</p>
+                      <p className="text-sm text-muted-foreground mt-1">Try searching with different keywords</p>
                     </div>
                   )}
                 </TabsContent>
@@ -847,19 +912,19 @@ function SearchPageContent() {
                 {/* Playlists Tab */}
                 <TabsContent value="playlists">
                   {searchResults.playlists?.results?.length > 0 ? (
-                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4 sm:gap-6">
                       {searchResults.playlists.results.map((playlist, index) => (
                         <div
                           key={playlist.id || index}
-                          className="group cursor-pointer"
+                          className="group cursor-pointer hover:scale-105 transition-transform duration-200"
                           onClick={() => handlePlaylistClick(playlist.id)}
                         >
-                          <div className="w-full aspect-square rounded-lg bg-muted mb-3 overflow-hidden">
+                          <div className="w-full aspect-square rounded-xl bg-muted mb-3 overflow-hidden shadow-lg group-hover:shadow-xl transition-shadow">
                             {playlist.image?.[2]?.url ? (
                               <img
                                 src={playlist.image[2].url}
                                 alt={playlist.title}
-                                className="w-full h-full object-cover"
+                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                               />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-500 to-pink-500">
@@ -867,18 +932,22 @@ function SearchPageContent() {
                               </div>
                             )}
                           </div>
-                          <p className="font-medium truncate text-sm">
+                          <p className="font-semibold truncate text-sm sm:text-base mb-1">
                             {decodeHtmlEntities(playlist.title)}
                           </p>
-                          <p className="text-xs text-muted-foreground truncate">
+                          <p className="text-xs sm:text-sm text-muted-foreground truncate">
                             By {playlist.subtitle || 'Various Artists'}
                           </p>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <div className="text-center py-12">
-                      <p className="text-muted-foreground">No playlists found</p>
+                    <div className="text-center py-20">
+                      <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted/50 flex items-center justify-center">
+                        <Search className="w-8 h-8 text-muted-foreground" />
+                      </div>
+                      <p className="text-lg font-medium text-muted-foreground">No playlists found</p>
+                      <p className="text-sm text-muted-foreground mt-1">Try searching with different keywords</p>
                     </div>
                   )}
                 </TabsContent>
