@@ -67,9 +67,12 @@ const authOptions = {
         if (account?.provider === 'google' || account?.provider === 'github') {
           await connectDB();
           
+          console.log('OAuth SignIn - Provider:', account.provider, 'Email:', user.email);
+          
           let existingUser = await User.findOne({ email: user.email });
           
           if (existingUser) {
+            console.log('Found existing user:', existingUser._id.toString());
             // Update OAuth ID if not set
             if (account.provider === 'google' && !existingUser.googleId) {
               existingUser.googleId = account.providerAccountId;
@@ -81,7 +84,11 @@ const authOptions = {
               existingUser.isVerified = true;
               await existingUser.save();
             }
+            // Set the user ID for OAuth users
+            user.id = existingUser._id.toString();
+            console.log('Set user.id to:', user.id);
           } else {
+            console.log('Creating new user for OAuth');
             // Create new user for OAuth
             const newUser = new User({
               name: user.name || user.email.split('@')[0],
@@ -92,7 +99,10 @@ const authOptions = {
               ...(account.provider === 'google' && { googleId: account.providerAccountId }),
               ...(account.provider === 'github' && { githubId: account.providerAccountId }),
             });
-            await newUser.save();
+            const savedUser = await newUser.save();
+            // Set the user ID for OAuth users
+            user.id = savedUser._id.toString();
+            console.log('Created new user with ID:', user.id);
           }
         }
         return true;
@@ -102,9 +112,35 @@ const authOptions = {
       }
     },
     async jwt({ token, user, account }) {
+      console.log('JWT callback - user:', user?.id, 'token.id:', token.id, 'account:', account?.provider);
+      
+      // If user object is present (first time login), use the ID from signIn callback
       if (user) {
+        console.log('Setting token.id from user.id:', user.id);
         token.id = user.id;
       }
+      
+      // Check if token.id is a valid MongoDB ObjectId, if not, fetch from database
+      const mongoose = require('mongoose');
+      const isValidObjectId = token.id && mongoose.Types.ObjectId.isValid(token.id);
+      
+      if (!token.id || !isValidObjectId) {
+        console.log('Invalid or missing ObjectId, fetching from database. Current token.id:', token.id);
+        try {
+          await connectDB();
+          const dbUser = await User.findOne({ email: token.email });
+          if (dbUser) {
+            console.log('Found DB user, setting token.id to:', dbUser._id.toString());
+            token.id = dbUser._id.toString();
+          } else {
+            console.log('No DB user found for email:', token.email);
+          }
+        } catch (error) {
+          console.error('JWT callback error:', error);
+        }
+      }
+      
+      console.log('Final token.id:', token.id);
       return token;
     },
     async session({ session, token }) {
