@@ -1,8 +1,55 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ModeToggle } from "@/components/mode-toggle";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Download } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export default function Home() {
+  // PWA Installation states
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [showInstallButton, setShowInstallButton] = useState(true); // Always show for testing
+
+  // PWA Installation functionality
+  useEffect(() => {
+    const handler = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstallButton(true);
+    };
+    
+    window.addEventListener('beforeinstallprompt', handler);
+    
+    // Check if app is already installed - commented out for testing
+    // if (window.matchMedia('(display-mode: standalone)').matches) {
+    //   setShowInstallButton(false);
+    // }
+    
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstall = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setShowInstallButton(false);
+      }
+      setDeferredPrompt(null);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-white dark:bg-black">
       {/* Header */}
@@ -11,7 +58,42 @@ export default function Home() {
           <div className="text-base sm:text-lg md:text-xl font-medium text-black dark:text-white">
             MusicApp
           </div>
-          <ModeToggle />
+          <div className="flex items-center gap-3">
+            {/* Install App Button */}
+            {showInstallButton && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-2">
+                    <Download className="w-4 h-4" />
+                    <span className="hidden sm:inline">Install App</span>
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent className="sm:max-w-md">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="flex items-center gap-3">
+                      <div className="w-12 h-12 bg-gradient-to-br from-purple-600 to-blue-600 rounded-lg flex items-center justify-center">
+                        <span className="text-2xl">🎵</span>
+                      </div>
+                      <div>
+                        <div className="font-semibold">Jammify — Stream Music with Style</div>
+                        <div className="text-sm text-muted-foreground font-normal">jammify-music.vercel.app</div>
+                      </div>
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Install Jammify as an app on your device for a better experience. You'll be able to access it directly from your home screen.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <div className="flex gap-2 justify-end">
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleInstall} className="bg-blue-600 hover:bg-blue-700">
+                      Install
+                    </AlertDialogAction>
+                  </div>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+            <ModeToggle />
+          </div>
         </div>
       </header>
 
@@ -33,8 +115,8 @@ export default function Home() {
             </p>
           </div>
 
-          {/* CTA Button */}
-          <div className="mb-12 sm:mb-16 md:mb-20">
+          {/* CTA Buttons */}
+          <div className="mb-12 sm:mb-16 md:mb-20 space-y-4">
             <Link
               href="/music"
               className="group inline-flex items-center justify-center px-8 sm:px-10 md:px-12 py-3 sm:py-4 text-sm sm:text-base md:text-lg font-medium text-white bg-black dark:bg-white dark:text-black rounded-full hover:bg-gray-800 dark:hover:bg-gray-100 transition-all duration-300 ease-out min-w-[200px] w-full max-w-sm sm:w-auto"
@@ -42,6 +124,40 @@ export default function Home() {
               Get Started
               <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 ml-2 group-hover:translate-x-1 transition-transform duration-300" />
             </Link>
+            
+            {/* Install App Button - Main CTA */}
+            <div className="flex justify-center">
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" className="gap-2 px-6 py-2">
+                    <Download className="w-4 h-4" />
+                    Install as App
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent className="sm:max-w-md">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="flex items-center gap-3">
+                      <div className="w-12 h-12 bg-gradient-to-br from-purple-600 to-blue-600 rounded-lg flex items-center justify-center">
+                        <span className="text-2xl">🎵</span>
+                      </div>
+                      <div>
+                        <div className="font-semibold">Jammify — Stream Music with Style</div>
+                        <div className="text-sm text-muted-foreground font-normal">jammify-music.vercel.app</div>
+                      </div>
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Install Jammify as an app on your device for a better experience. You'll be able to access it directly from your home screen.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <div className="flex gap-2 justify-end">
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleInstall} className="bg-blue-600 hover:bg-blue-700">
+                      Install
+                    </AlertDialogAction>
+                  </div>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
           </div>
 
           {/* Simple Features */}
