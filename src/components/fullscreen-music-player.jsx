@@ -15,9 +15,21 @@ import {
   MoreHorizontal,
   Shuffle,
   Repeat,
-  Share,
+  Mic,
   ListMusic,
+  Plus,
+  User,
+  Disc,
+  Share,
+  Download,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useMusicPlayer } from "@/contexts/music-player-context";
 import { useLikedSongs } from "@/hooks/useLikedSongs";
 import { useSession } from "next-auth/react";
@@ -46,12 +58,21 @@ export function FullscreenMusicPlayer({
   const [isShuffled, setIsShuffled] = useState(false);
   const [repeatMode, setRepeatMode] = useState("off"); // 'off', 'all', 'one'
   const [showPlaylist, setShowPlaylist] = useState(false);
+  const [showLyrics, setShowLyrics] = useState(false);
   const [shuffledPlaylist, setShuffledPlaylist] = useState([]);
+  const [lyrics, setLyrics] = useState(null);
+  const [lyricsLoading, setLyricsLoading] = useState(false);
   const [dominantColors, setDominantColors] = useState({
     primary: "#6366f1", // Default indigo
     secondary: "#8b5cf6", // Default purple
     accent: "#a855f7", // Default purple
   });
+
+  // Refs for lyric scrolling - separate for mobile and desktop
+  const mobileLyricsContainerRef = useRef(null);
+  const desktopLyricsContainerRef = useRef(null);
+  const mobileLyricLineRefs = useRef([]);
+  const desktopLyricLineRefs = useRef([]);
 
   const formatTime = (time) => {
     if (!time || isNaN(time)) return "0:00";
@@ -73,6 +94,169 @@ export function FullscreenMusicPlayer({
     }
     if (song.primaryArtists) return song.primaryArtists;
     return "Unknown Artist";
+  };
+
+  // Fetch lyrics from LRCLib API
+  const fetchLyrics = async (song) => {
+    if (!song) return null;
+
+    try {
+      setLyricsLoading(true);
+
+      // Get song details
+      const artistName = getArtistNames(song);
+      const trackName = decodeHtmlEntities(song.name || song.title);
+      const albumName = song.album?.name
+        ? decodeHtmlEntities(song.album.name)
+        : "";
+      const duration = song.duration || 0;
+
+      // Build API URL
+      const params = new URLSearchParams();
+      params.append("artist_name", artistName);
+      params.append("track_name", trackName);
+      if (albumName) params.append("album_name", albumName);
+      if (duration) params.append("duration", duration.toString());
+
+      const apiUrl = `https://lrclib.net/api/get?${params.toString()}`;
+      console.log("Fetching lyrics from:", apiUrl);
+
+      const response = await fetch(apiUrl);
+
+      // Handle 404 (lyrics not found) gracefully
+      if (response.status === 404) {
+        console.log("Lyrics not found for this song");
+        return null;
+      }
+
+      // Handle other HTTP errors
+      if (!response.ok) {
+        console.warn(`Lyrics API returned status: ${response.status}`);
+        return null;
+      }
+
+      const data = await response.json();
+      console.log("Lyrics data received:", data);
+
+      return data;
+    } catch (error) {
+      // Handle network errors, CORS issues, etc.
+      console.warn("Could not fetch lyrics:", error.message);
+      return null;
+    } finally {
+      setLyricsLoading(false);
+    }
+  };
+
+  // Parse synced lyrics (LRC format)
+  const parseSyncedLyrics = (syncedLyrics) => {
+    if (!syncedLyrics) return [];
+
+    const lines = syncedLyrics.split("\n");
+    const parsedLines = [];
+
+    for (const line of lines) {
+      // Match LRC format: [mm:ss.xx] or [mm:ss] followed by lyrics
+      const match = line.match(/\[(\d{2}):(\d{2})(?:\.(\d{2}))?\]\s*(.*)/);
+      if (match) {
+        const minutes = parseInt(match[1], 10);
+        const seconds = parseInt(match[2], 10);
+        const centiseconds = parseInt(match[3] || "0", 10);
+        const text = match[4].trim();
+
+        const timeInSeconds = minutes * 60 + seconds + centiseconds / 100;
+
+        if (text) {
+          // Only add non-empty lyrics
+          parsedLines.push({
+            time: timeInSeconds,
+            text: text,
+          });
+        }
+      }
+    }
+
+    return parsedLines.sort((a, b) => a.time - b.time);
+  };
+
+  // Get current lyric line based on current time
+  const getCurrentLyricIndex = (parsedLyrics, currentTime) => {
+    if (!parsedLyrics || parsedLyrics.length === 0) return -1;
+
+    for (let i = parsedLyrics.length - 1; i >= 0; i--) {
+      if (currentTime >= parsedLyrics[i].time) {
+        return i;
+      }
+    }
+    return -1;
+  };
+
+  // Scroll to center the current lyric line (Spotify-like behavior)
+  const scrollToCurrentLyric = (currentIndex) => {
+    if (currentIndex === -1) return;
+
+    // Check which container is currently active (mobile or desktop)
+    const mobileContainer = mobileLyricsContainerRef.current;
+    const desktopContainer = desktopLyricsContainerRef.current;
+
+    let container = null;
+    let lineRefs = null;
+
+    // Try mobile first - check if it exists and is visible
+    if (mobileContainer) {
+      try {
+        // Check if the mobile container is actually visible in the DOM
+        const rect = mobileContainer.getBoundingClientRect();
+        const isVisible =
+          rect.width > 0 &&
+          rect.height > 0 &&
+          mobileContainer.offsetParent !== null;
+
+        if (isVisible) {
+          container = mobileContainer;
+          lineRefs = mobileLyricLineRefs.current;
+        }
+      } catch (e) {
+        // Fallback if getBoundingClientRect fails
+      }
+    }
+
+    // Try desktop if mobile not found or not visible
+    if (!container && desktopContainer) {
+      try {
+        const rect = desktopContainer.getBoundingClientRect();
+        const isVisible =
+          rect.width > 0 &&
+          rect.height > 0 &&
+          desktopContainer.offsetParent !== null;
+
+        if (isVisible) {
+          container = desktopContainer;
+          lineRefs = desktopLyricLineRefs.current;
+        }
+      } catch (e) {
+        // Fallback if getBoundingClientRect fails
+      }
+    }
+
+    if (!container || !lineRefs) return;
+
+    const currentLineElement = lineRefs[currentIndex];
+    if (!currentLineElement) return;
+
+    // Get container and line dimensions
+    const containerHeight = container.clientHeight;
+    const lineTop = currentLineElement.offsetTop;
+    const lineHeight = currentLineElement.clientHeight;
+
+    // Calculate scroll position to center the line
+    const scrollPosition = lineTop - containerHeight / 2 + lineHeight / 2;
+
+    // Smooth scroll to the calculated position
+    container.scrollTo({
+      top: Math.max(0, scrollPosition),
+      behavior: "smooth",
+    });
   };
 
   const handleLikeToggle = async () => {
@@ -369,6 +553,40 @@ export function FullscreenMusicPlayer({
     }
   }, [currentSong?.id]);
 
+  // Fetch lyrics when song changes
+  useEffect(() => {
+    if (currentSong && showLyrics) {
+      fetchLyrics(currentSong).then((lyricsData) => {
+        setLyrics(lyricsData);
+      });
+    }
+  }, [currentSong?.id, showLyrics]);
+
+  // Handle lyrics button click
+  const handleLyricsToggle = async () => {
+    if (!showLyrics && currentSong && !lyrics) {
+      // Fetch lyrics when opening for the first time
+      const lyricsData = await fetchLyrics(currentSong);
+      setLyrics(lyricsData);
+    }
+    setShowLyrics(!showLyrics);
+  };
+
+  // Auto-scroll to current lyric line (Spotify-like behavior)
+  useEffect(() => {
+    if (!showLyrics || !lyrics?.syncedLyrics) return;
+
+    const parsedLyrics = parseSyncedLyrics(lyrics.syncedLyrics);
+    const currentLyricIndex = getCurrentLyricIndex(parsedLyrics, currentTime);
+
+    if (currentLyricIndex !== -1) {
+      // Add a small delay to ensure DOM elements are rendered
+      setTimeout(() => {
+        scrollToCurrentLyric(currentLyricIndex);
+      }, 150);
+    }
+  }, [currentTime, showLyrics, lyrics?.syncedLyrics]);
+
   if (!isOpen || !currentSong) return null;
 
   return (
@@ -443,7 +661,7 @@ export function FullscreenMusicPlayer({
       <div
         className={`relative z-10 flex flex-col h-full text-white safe-area-inset transition-all duration-300 ${
           showPlaylist ? "md:mr-80" : ""
-        }`}
+        } ${showLyrics ? "hidden" : ""}`}
       >
         {/* Header */}
         <div className="flex items-center justify-between p-4 sm:p-6 flex-shrink-0">
@@ -611,8 +829,13 @@ export function FullscreenMusicPlayer({
                   <ListMusic className="w-6 h-6" />
                 </Button>
 
-                <Button variant="ghost" size="sm" className="text-white/60">
-                  <Share className="w-6 h-6" />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-white/60"
+                  onClick={handleLyricsToggle}
+                >
+                  <Mic className="w-6 h-6" />
                 </Button>
               </div>
             </div>
@@ -797,8 +1020,9 @@ export function FullscreenMusicPlayer({
                     variant="ghost"
                     size="sm"
                     className="text-white/60 hover:bg-white/10 rounded-full p-3"
+                    onClick={handleLyricsToggle}
                   >
-                    <Share className="w-6 h-6" />
+                    <Mic className="w-6 h-6" />
                   </Button>
                 </div>
               </div>
@@ -925,6 +1149,407 @@ export function FullscreenMusicPlayer({
             </div>
           </div>
         </>
+      )}
+
+      {/* Lyrics View - Full Screen Overlay */}
+      {showLyrics && (
+        <div className="fixed inset-0 z-[110] overflow-hidden">
+          {/* Ambient Background */}
+          <div className="absolute inset-0">
+            {/* Multiple layered background images for ambient effect */}
+            {currentSong.image?.[2]?.url && (
+              <>
+                {/* Base blurred image */}
+                <img
+                  src={currentSong.image[2].url}
+                  alt={currentSong.name}
+                  className="absolute inset-0 w-full h-full object-cover opacity-30 blur-3xl scale-125 transition-all duration-1000"
+                />
+                {/* Secondary ambient layer */}
+                <img
+                  src={currentSong.image[2].url}
+                  alt={currentSong.name}
+                  className="absolute inset-0 w-full h-full object-cover opacity-15 blur-[100px] scale-150 transition-all duration-1000"
+                />
+                {/* Tertiary glow layer */}
+                <img
+                  src={currentSong.image[2].url}
+                  alt={currentSong.name}
+                  className="absolute inset-0 w-full h-full object-cover opacity-8 blur-[150px] scale-[2] transition-all duration-1000"
+                />
+              </>
+            )}
+
+            {/* Dynamic gradient overlay based on extracted colors */}
+            <div
+              className="absolute inset-0 transition-all duration-1000"
+              style={{
+                background: `
+                  radial-gradient(ellipse at top, ${dominantColors.primary}20 0%, transparent 50%),
+                  radial-gradient(ellipse at bottom left, ${dominantColors.secondary}25 0%, transparent 50%),
+                  radial-gradient(ellipse at bottom right, ${dominantColors.accent}20 0%, transparent 50%),
+                  linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.8) 50%, rgba(0,0,0,0.95) 100%)
+                `,
+              }}
+            />
+
+            {/* Color wash overlay */}
+            <div
+              className="absolute inset-0 mix-blend-soft-light opacity-30 transition-all duration-1000"
+              style={{
+                background: `
+                  radial-gradient(circle at 30% 20%, ${dominantColors.primary}40 0%, transparent 40%),
+                  radial-gradient(circle at 70% 80%, ${dominantColors.secondary}30 0%, transparent 40%),
+                  radial-gradient(circle at 50% 50%, ${dominantColors.accent}25 0%, transparent 60%)
+                `,
+              }}
+            />
+
+            {/* Subtle noise texture for depth */}
+            <div
+              className="absolute inset-0 opacity-[0.015] mix-blend-overlay"
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
+                backgroundSize: "256px 256px",
+              }}
+            />
+          </div>
+
+          <div className="relative z-10 flex flex-col h-full">
+            {/* Lyrics Header */}
+            <div className="flex items-center justify-between p-4 border-b border-white/10">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowLyrics(false)}
+                className="text-white/60 hover:bg-white/10 rounded-full p-2"
+              >
+                <ChevronDown className="w-5 h-5" />
+              </Button>
+              <h3 className="text-lg font-semibold text-white">Lyrics</h3>
+              <div className="w-9"></div> {/* Spacer for centering */}
+            </div>
+
+            {/* Lyrics Content */}
+            <div className="flex-1 overflow-hidden">
+              {/* Mobile Layout */}
+              <div className="md:hidden h-full flex flex-col">
+                {/* Album Art and Song Info */}
+                <div className="flex items-center gap-4 p-4 border-b border-white/5">
+                  <div className="w-16 h-16 rounded-lg overflow-hidden bg-gradient-to-br from-gray-800 to-gray-900 flex-shrink-0">
+                    {currentSong.image?.[0]?.url ? (
+                      <img
+                        src={currentSong.image[0].url}
+                        alt={currentSong.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Play className="w-6 h-6 text-white/50" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-white font-semibold truncate text-lg">
+                      {decodeHtmlEntities(currentSong.name)}
+                    </h4>
+                    <p className="text-white/70 truncate">
+                      {getArtistNames(currentSong)}
+                    </p>
+                  </div>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={onTogglePlayPause}
+                    className="flex-shrink-0 rounded-full w-12 h-12 bg-green-500 hover:bg-green-600 text-black hover:scale-105 transition-all duration-200"
+                  >
+                    {isPlaying ? (
+                      <Pause className="w-5 h-5" />
+                    ) : (
+                      <Play className="w-5 h-5 ml-0.5" />
+                    )}
+                  </Button>
+                </div>
+
+                {/* Lyrics Text */}
+                <div
+                  ref={mobileLyricsContainerRef}
+                  className="flex-1 overflow-y-auto p-6 scrollbar-hide"
+                >
+                  <div className="space-y-6 text-center max-w-md mx-auto">
+                    {lyricsLoading ? (
+                      <div className="flex items-center justify-center py-12">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white/60"></div>
+                        <span className="ml-3 text-white/60">
+                          Loading lyrics...
+                        </span>
+                      </div>
+                    ) : lyrics ? (
+                      <>
+                        {/* Synced Lyrics */}
+                        {lyrics.syncedLyrics ? (
+                          <div className="space-y-3 text-white/90 leading-relaxed">
+                            {parseSyncedLyrics(lyrics.syncedLyrics).map(
+                              (line, index) => {
+                                const currentLyricIndex = getCurrentLyricIndex(
+                                  parseSyncedLyrics(lyrics.syncedLyrics),
+                                  currentTime
+                                );
+                                const isCurrentLine =
+                                  index === currentLyricIndex;
+                                const isUpcomingLine =
+                                  index === currentLyricIndex + 1;
+
+                                return (
+                                  <p
+                                    key={index}
+                                    ref={(el) =>
+                                      (mobileLyricLineRefs.current[index] = el)
+                                    }
+                                    className={`text-lg transition-all duration-300 ${
+                                      isCurrentLine
+                                        ? "text-white font-bold text-xl scale-105"
+                                        : isUpcomingLine
+                                        ? "text-white/80 font-medium"
+                                        : "text-white/50"
+                                    }`}
+                                  >
+                                    {line.text}
+                                  </p>
+                                );
+                              }
+                            )}
+                          </div>
+                        ) : lyrics.plainLyrics ? (
+                          /* Plain Lyrics */
+                          <div className="space-y-4 text-white/90 leading-relaxed">
+                            {lyrics.plainLyrics
+                              .split("\n")
+                              .map((line, index) => (
+                                <p key={index} className="text-lg">
+                                  {line.trim()}
+                                </p>
+                              ))}
+                          </div>
+                        ) : (
+                          <div className="text-center py-12">
+                            <p className="text-white/60 text-lg">
+                              No lyrics available
+                            </p>
+                            <p className="text-white/40 text-sm mt-2">
+                              Enjoy the music!
+                            </p>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="text-center py-12">
+                        <p className="text-white/60 text-lg">No lyrics found</p>
+                        <p className="text-white/40 text-sm mt-2">
+                          Try searching for another song
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Desktop Layout - Centered and Balanced */}
+              <div className="hidden md:flex h-full">
+                <div className="flex items-center justify-center w-full px-8 py-8">
+                  <div className="flex items-center gap-12 lg:gap-16 max-w-6xl w-full">
+                    {/* Left Side - Album Art with Integrated Controls */}
+                    <div className="flex-shrink-0">
+                      <div className="w-[350px] lg:w-[400px]">
+                        {/* Album Art Container with Overlay Controls */}
+                        <div className="relative aspect-square rounded-2xl overflow-hidden shadow-2xl bg-gradient-to-br from-gray-800 to-gray-900 mb-6 group">
+                          {currentSong.image?.[2]?.url ? (
+                            <img
+                              src={currentSong.image[2].url}
+                              alt={currentSong.name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Play className="w-16 h-16 text-white/50" />
+                            </div>
+                          )}
+
+                          {/* Overlay Controls - Spotify Style */}
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-all duration-300">
+                            {/* Center Play Controls */}
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <div className="flex items-center gap-4">
+                                <Button
+                                  variant="ghost"
+                                  size="lg"
+                                  onClick={handlePrevious}
+                                  className="text-white hover:bg-white/10 rounded-full p-3"
+                                >
+                                  <SkipBack className="w-6 h-6" />
+                                </Button>
+
+                                <Button
+                                  variant="default"
+                                  size="lg"
+                                  onClick={onTogglePlayPause}
+                                  className="rounded-full w-14 h-14 bg-white text-black hover:bg-white/90 hover:scale-105 transition-all duration-200"
+                                >
+                                  {isPlaying ? (
+                                    <Pause className="w-6 h-6" />
+                                  ) : (
+                                    <Play className="w-6 h-6 ml-0.5" />
+                                  )}
+                                </Button>
+
+                                <Button
+                                  variant="ghost"
+                                  size="lg"
+                                  onClick={handleNext}
+                                  className="text-white hover:bg-white/10 rounded-full p-3"
+                                >
+                                  <SkipForward className="w-6 h-6" />
+                                </Button>
+                              </div>
+                            </div>
+
+                            {/* Bottom Progress Bar */}
+                            <div className="absolute bottom-4 left-4 right-4">
+                              <div className="flex items-center gap-2 text-xs text-white/80 mb-2">
+                                <span>{formatTime(currentTime)}</span>
+                                <div className="flex-1">
+                                  <Slider
+                                    value={[currentTime]}
+                                    max={duration || 100}
+                                    step={1}
+                                    onValueChange={onSeek}
+                                    className="w-full [&_[role=slider]]:bg-white [&_[role=slider]]:border-white [&_[role=slider]]:w-3 [&_[role=slider]]:h-3 [&_.bg-primary]:bg-white"
+                                  />
+                                </div>
+                                <span>{formatTime(duration)}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Song Info Below Album Art */}
+                        <div className="text-center px-4">
+                          <h4 className="text-white font-bold text-2xl mb-2 truncate">
+                            {decodeHtmlEntities(currentSong.name)}
+                          </h4>
+                          <p className="text-white/70 text-lg truncate">
+                            {getArtistNames(currentSong)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right Side - Lyrics */}
+                    <div className="flex-1 min-w-0">
+                      <div
+                        ref={desktopLyricsContainerRef}
+                        className="h-[500px] lg:h-[600px] overflow-y-auto scrollbar-hide"
+                      >
+                        <div className="space-y-6 px-4 lg:px-6">
+                          {lyricsLoading ? (
+                            <div className="flex items-center justify-center py-12">
+                              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white/60"></div>
+                              <span className="ml-4 text-white/60 text-xl">
+                                Loading lyrics...
+                              </span>
+                            </div>
+                          ) : lyrics ? (
+                            <>
+                              {/* Synced Lyrics */}
+                              {lyrics.syncedLyrics ? (
+                                <div className="space-y-6 text-white/90 leading-relaxed">
+                                  {parseSyncedLyrics(lyrics.syncedLyrics).map(
+                                    (line, index) => {
+                                      const currentLyricIndex =
+                                        getCurrentLyricIndex(
+                                          parseSyncedLyrics(
+                                            lyrics.syncedLyrics
+                                          ),
+                                          currentTime
+                                        );
+                                      const isCurrentLine =
+                                        index === currentLyricIndex;
+                                      const isUpcomingLine =
+                                        index === currentLyricIndex + 1;
+
+                                      return (
+                                        <p
+                                          key={index}
+                                          ref={(el) =>
+                                            (desktopLyricLineRefs.current[
+                                              index
+                                            ] = el)
+                                          }
+                                          className={`text-xl lg:text-2xl transition-all duration-500 cursor-pointer hover:text-white/80 break-words ${
+                                            isCurrentLine
+                                              ? "text-white font-bold text-2xl lg:text-3xl transform scale-105"
+                                              : isUpcomingLine
+                                              ? "text-white/80 font-medium text-xl lg:text-2xl"
+                                              : "text-white/40 text-lg lg:text-xl"
+                                          }`}
+                                          onClick={() =>
+                                            onSeek([
+                                              parseSyncedLyrics(
+                                                lyrics.syncedLyrics
+                                              )[index]?.time || 0,
+                                            ])
+                                          }
+                                        >
+                                          {line.text}
+                                        </p>
+                                      );
+                                    }
+                                  )}
+                                </div>
+                              ) : lyrics.plainLyrics ? (
+                                /* Plain Lyrics */
+                                <div className="space-y-6 text-white/90 leading-relaxed">
+                                  {lyrics.plainLyrics
+                                    .split("\n")
+                                    .map((line, index) => (
+                                      <p
+                                        key={index}
+                                        className="text-xl lg:text-2xl text-white/70 hover:text-white/90 transition-colors cursor-pointer break-words"
+                                      >
+                                        {line.trim()}
+                                      </p>
+                                    ))}
+                                </div>
+                              ) : (
+                                <div className="text-center py-12">
+                                  <p className="text-white/60 text-xl">
+                                    No lyrics available
+                                  </p>
+                                  <p className="text-white/40 text-lg mt-2">
+                                    Enjoy the music!
+                                  </p>
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            <div className="text-center py-12">
+                              <p className="text-white/60 text-xl">
+                                No lyrics found
+                              </p>
+                              <p className="text-white/40 text-lg mt-2">
+                                Try searching for another song
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
