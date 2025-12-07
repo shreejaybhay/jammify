@@ -498,8 +498,11 @@ export default function FavoritesPage() {
                               {likedSong.artists?.length > 0 ? (
                                 likedSong.artists.map((artist, artistIndex) => (
                                   <span key={artist.id || artistIndex}>
+                                    <span className="md:hidden">
+                                      {artist.name}
+                                    </span>
                                     <button
-                                      className={`hover:underline transition-colors ${isCurrentSong ? 'hover:text-green-300' : 'hover:text-foreground'
+                                      className={`hidden md:inline hover:underline transition-colors ${isCurrentSong ? 'hover:text-green-300' : 'hover:text-foreground'
                                         }`}
                                       onClick={(e) => {
                                         e.stopPropagation();
