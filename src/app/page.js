@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ModeToggle } from "@/components/mode-toggle";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Download } from "lucide-react";
 
 export default function Home() {
   return (
@@ -33,15 +33,26 @@ export default function Home() {
             </p>
           </div>
 
-          {/* CTA Button */}
+          {/* CTA Buttons */}
           <div className="mb-12 sm:mb-16 md:mb-20">
-            <Link
-              href="/music"
-              className="group inline-flex items-center justify-center px-8 sm:px-10 md:px-12 py-3 sm:py-4 text-sm sm:text-base md:text-lg font-medium text-white bg-black dark:bg-white dark:text-black rounded-full hover:bg-gray-800 dark:hover:bg-gray-100 transition-all duration-300 ease-out min-w-[200px] w-full max-w-sm sm:w-auto"
-            >
-              Get Started
-              <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 ml-2 group-hover:translate-x-1 transition-transform duration-300" />
-            </Link>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6">
+              <Link
+                href="/music"
+                className="group inline-flex items-center justify-center px-8 sm:px-10 md:px-12 py-3 sm:py-4 text-sm sm:text-base md:text-lg font-medium text-white bg-black dark:bg-white dark:text-black rounded-full hover:bg-gray-800 dark:hover:bg-gray-100 transition-all duration-300 ease-out min-w-[200px] w-full sm:w-auto"
+              >
+                Get Started
+                <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 ml-2 group-hover:translate-x-1 transition-transform duration-300" />
+              </Link>
+
+              <a
+                href="/Jammify.apk"
+                download="Jammify.apk"
+                className="group inline-flex items-center justify-center px-6 sm:px-8 md:px-10 py-3 sm:py-4 text-sm sm:text-base md:text-lg font-medium text-black dark:text-white border border-black dark:border-white rounded-full hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-all duration-300 ease-out min-w-[200px] w-full sm:w-auto"
+              >
+                <Download className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+                Download APK
+              </a>
+            </div>
           </div>
 
           {/* Simple Features */}
