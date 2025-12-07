@@ -54,21 +54,44 @@ export default function Home() {
     }
   };
 
+  const [showInstructions, setShowInstructions] = useState(false);
+
   const showManualInstallInstructions = () => {
+    setShowInstructions(true);
+  };
+
+  const getInstallInstructions = () => {
     const isChrome = /Chrome/.test(navigator.userAgent) && /Google Inc/.test(navigator.vendor);
     const isEdge = /Edg/.test(navigator.userAgent);
     
-    let instructions = "";
-    
     if (isChrome) {
-      instructions = "Click the install icon (⬇️) in your browser's address bar, or go to Chrome menu → 'Install Jammify...'";
+      return {
+        title: "Install on Chrome",
+        steps: [
+          "Look for the install icon (⬇️) in your browser's address bar",
+          "Or click the three dots menu → 'Install Jammify...'",
+          "Click 'Install' to add Jammify to your desktop"
+        ]
+      };
     } else if (isEdge) {
-      instructions = "Click the install icon (⬇️) in your browser's address bar, or go to Edge menu → 'Apps' → 'Install this site as an app'";
+      return {
+        title: "Install on Edge", 
+        steps: [
+          "Look for the install icon (⬇️) in your browser's address bar",
+          "Or click the three dots menu → 'Apps' → 'Install this site as an app'",
+          "Click 'Install' to add Jammify to your desktop"
+        ]
+      };
     } else {
-      instructions = "To install this app, use Chrome or Edge browser and look for the install option in the address bar or browser menu.";
+      return {
+        title: "Install Instructions",
+        steps: [
+          "Use Chrome or Edge browser for the best experience",
+          "Visit this site in Chrome/Edge",
+          "Look for the install option in the address bar or browser menu"
+        ]
+      };
     }
-    
-    alert(`Install Instructions:\n\n${instructions}`);
   };
 
   return (
@@ -211,6 +234,41 @@ export default function Home() {
           </div>
         </div>
       </main>
+
+      {/* Desktop Install Instructions Dialog */}
+      <AlertDialog open={showInstructions} onOpenChange={setShowInstructions}>
+        <AlertDialogContent className="sm:max-w-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-gradient-to-br from-purple-600 to-blue-600 rounded-lg flex items-center justify-center">
+                <span className="text-2xl">🎵</span>
+              </div>
+              <div>
+                <div className="font-semibold">{getInstallInstructions().title}</div>
+                <div className="text-sm text-muted-foreground font-normal">Follow these steps to install Jammify</div>
+              </div>
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>To install Jammify as a desktop app:</p>
+                <ol className="list-decimal list-inside space-y-2 text-sm">
+                  {getInstallInstructions().steps.map((step, index) => (
+                    <li key={index} className="text-foreground">{step}</li>
+                  ))}
+                </ol>
+                <p className="text-xs text-muted-foreground mt-4">
+                  Once installed, you can access Jammify directly from your desktop without opening a browser.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="flex gap-2 justify-end">
+            <AlertDialogAction onClick={() => setShowInstructions(false)} className="bg-blue-600 hover:bg-blue-700">
+              Got it
+            </AlertDialogAction>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
