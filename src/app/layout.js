@@ -5,6 +5,7 @@ import { SessionProvider } from "next-auth/react";
 import AuthProvider from "@/components/auth-provider";
 import { MusicPlayerProvider } from "@/contexts/music-player-context";
 import { MusicPlayerWrapper } from "@/components/music-player-wrapper";
+import ServiceWorkerRegistration from "@/components/service-worker-registration";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -76,6 +77,7 @@ export default function RootLayout({ children }) {
             <MusicPlayerProvider>
               {children}
               <MusicPlayerWrapper />
+              <ServiceWorkerRegistration />
             </MusicPlayerProvider>
           </ThemeProvider>
         </AuthProvider>

@@ -41,13 +41,34 @@ export default function Home() {
 
   const handleInstall = async () => {
     if (deferredPrompt) {
+      // Native PWA installation available
       deferredPrompt.prompt();
       const { outcome } = await deferredPrompt.userChoice;
       if (outcome === 'accepted') {
         setShowInstallButton(false);
       }
       setDeferredPrompt(null);
+    } else {
+      // Fallback for desktop browsers - show manual instructions
+      showManualInstallInstructions();
     }
+  };
+
+  const showManualInstallInstructions = () => {
+    const isChrome = /Chrome/.test(navigator.userAgent) && /Google Inc/.test(navigator.vendor);
+    const isEdge = /Edg/.test(navigator.userAgent);
+    
+    let instructions = "";
+    
+    if (isChrome) {
+      instructions = "Click the install icon (⬇️) in your browser's address bar, or go to Chrome menu → 'Install Jammify...'";
+    } else if (isEdge) {
+      instructions = "Click the install icon (⬇️) in your browser's address bar, or go to Edge menu → 'Apps' → 'Install this site as an app'";
+    } else {
+      instructions = "To install this app, use Chrome or Edge browser and look for the install option in the address bar or browser menu.";
+    }
+    
+    alert(`Install Instructions:\n\n${instructions}`);
   };
 
   return (
