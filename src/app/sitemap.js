@@ -1,7 +1,5 @@
-// src/app/sitemap.ts
-import type { MetadataRoute } from "next";
-
-export default function sitemap(): MetadataRoute.Sitemap {
+// src/app/sitemap.js
+export default function sitemap() {
   const base = "https://jammify-music.vercel.app";
 
   return [
