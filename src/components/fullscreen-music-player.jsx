@@ -1307,11 +1307,14 @@ export function FullscreenMusicPlayer({
                     }`}
                   >
                     <div className="w-12 h-12 rounded bg-white/10 overflow-hidden flex-shrink-0">
-                      {song.image?.[0]?.url ? (
+                      {song.image?.length > 0 ? (
                         <img
-                          src={song.image[0].url}
+                          src={song.image.find(img => img.quality === '500x500')?.url || 
+                               song.image.find(img => img.quality === '150x150')?.url || 
+                               song.image[song.image.length - 1]?.url}
                           alt={song.name}
                           className="w-full h-full object-cover"
+                          loading="lazy"
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
@@ -1405,16 +1408,19 @@ export function FullscreenMusicPlayer({
                     draggedIndex === index ? "opacity-50 scale-95" : ""
                   }`}
                 >
-                  <div className="w-10 h-10 rounded bg-white/10 overflow-hidden flex-shrink-0">
-                    {song.image?.[0]?.url ? (
+                  <div className="w-12 h-12 rounded bg-white/10 overflow-hidden flex-shrink-0">
+                    {song.image?.length > 0 ? (
                       <img
-                        src={song.image[0].url}
+                        src={song.image.find(img => img.quality === '500x500')?.url || 
+                             song.image.find(img => img.quality === '150x150')?.url || 
+                             song.image[song.image.length - 1]?.url}
                         alt={song.name}
                         className="w-full h-full object-cover"
+                        loading="lazy"
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
-                        <Play className="w-3 h-3 text-white/50" />
+                        <Play className="w-4 h-4 text-white/50" />
                       </div>
                     )}
                   </div>
@@ -1546,11 +1552,14 @@ export function FullscreenMusicPlayer({
                 {/* Album Art and Song Info */}
                 <div className="flex items-center gap-4 p-4 border-b border-white/5">
                   <div className="w-16 h-16 rounded-lg overflow-hidden bg-gradient-to-br from-gray-800 to-gray-900 flex-shrink-0">
-                    {currentSong.image?.[0]?.url ? (
+                    {currentSong.image?.length > 0 ? (
                       <img
-                        src={currentSong.image[0].url}
+                        src={currentSong.image.find(img => img.quality === '500x500')?.url || 
+                             currentSong.image.find(img => img.quality === '150x150')?.url || 
+                             currentSong.image[currentSong.image.length - 1]?.url}
                         alt={currentSong.name}
                         className="w-full h-full object-cover"
+                        loading="lazy"
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">

@@ -318,12 +318,15 @@ export function MusicPlayer({ currentSong, playlist = [], onSongChange }) {
             className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer"
             onClick={() => setIsFullscreen(true)}
           >
-            <div className="w-10 h-10 rounded bg-gradient-to-br from-purple-500 to-pink-500 flex-shrink-0">
-              {currentSong.image?.[0]?.url ? (
+            <div className="w-10 h-10 rounded bg-gradient-to-br from-purple-500 to-pink-500 flex-shrink-0 overflow-hidden">
+              {currentSong.image?.length > 0 ? (
                 <img
-                  src={currentSong.image[0].url}
+                  src={currentSong.image.find(img => img.quality === '500x500')?.url || 
+                       currentSong.image.find(img => img.quality === '150x150')?.url || 
+                       currentSong.image[currentSong.image.length - 1]?.url}
                   alt={currentSong.name}
                   className="w-full h-full object-cover rounded"
+                  loading="lazy"
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
@@ -406,12 +409,15 @@ export function MusicPlayer({ currentSong, playlist = [], onSongChange }) {
             className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer hover:bg-muted/50 rounded-lg p-2 -m-2 transition-colors"
             onClick={() => setIsFullscreen(true)}
           >
-            <div className="w-12 h-12 rounded bg-gradient-to-br from-purple-500 to-pink-500 flex-shrink-0">
-              {currentSong.image?.[0]?.url ? (
+            <div className="w-12 h-12 rounded bg-gradient-to-br from-purple-500 to-pink-500 flex-shrink-0 overflow-hidden">
+              {currentSong.image?.length > 0 ? (
                 <img
-                  src={currentSong.image[0].url}
+                  src={currentSong.image.find(img => img.quality === '500x500')?.url || 
+                       currentSong.image.find(img => img.quality === '150x150')?.url || 
+                       currentSong.image[currentSong.image.length - 1]?.url}
                   alt={currentSong.name}
                   className="w-full h-full object-cover rounded"
+                  loading="lazy"
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
