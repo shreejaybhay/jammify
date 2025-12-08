@@ -152,31 +152,48 @@ export function FullscreenMusicPlayer({
     setIsDragging(false);
     setDraggedElement(e.currentTarget);
     
+    // Store initial touch position for better detection
+    e.currentTarget.touchStartX = touch.clientX;
+    e.currentTarget.touchStartTime = Date.now();
+    
     // Don't prevent default here to allow normal scrolling initially
   };
 
   const handleTouchMove = (e) => {
-    if (draggedIndex === null) return;
+    if (draggedIndex === null || !draggedElement) return;
     
     const touch = e.touches[0];
+    const currentTime = Date.now();
+    const timeDiff = currentTime - (draggedElement.touchStartTime || 0);
+    
     setTouchCurrentY(touch.clientY);
     
     const deltaY = Math.abs(touch.clientY - touchStartY);
-    const deltaX = Math.abs(touch.clientX - (e.touches[0].clientX || touch.clientX));
+    const deltaX = Math.abs(touch.clientX - (draggedElement.touchStartX || touch.clientX));
     
-    // Start dragging if moved more than 15px vertically and less horizontally (to distinguish from scroll)
-    if (deltaY > 15 && deltaX < 30 && !isDragging) {
+    // Much stricter conditions for drag detection:
+    // 1. Must hold for at least 300ms (long press)
+    // 2. Must move more than 40px vertically 
+    // 3. Horizontal movement must be less than 20px (to avoid interfering with horizontal swipes)
+    // 4. Must not be already dragging
+    if (timeDiff > 300 && deltaY > 40 && deltaX < 20 && !isDragging) {
       setIsDragging(true);
       if (draggedElement) {
         draggedElement.style.opacity = "0.7";
         draggedElement.style.transform = "scale(0.98)";
         draggedElement.style.zIndex = "1000";
         draggedElement.style.boxShadow = "0 10px 30px rgba(0,0,0,0.3)";
+        
+        // Add haptic feedback if available
+        if (navigator.vibrate) {
+          navigator.vibrate(50);
+        }
       }
       // Now prevent scrolling since we're dragging
       e.preventDefault();
     }
     
+    // Only proceed with drag logic if we're actually dragging
     if (isDragging) {
       // Prevent scrolling while dragging
       e.preventDefault();
@@ -207,6 +224,9 @@ export function FullscreenMusicPlayer({
         const offset = touch.clientY - touchStartY;
         draggedElement.style.transform = `translateY(${offset}px) scale(0.98)`;
       }
+    } else {
+      // If not dragging yet, allow normal scrolling by not preventing default
+      // This ensures smooth scrolling experience
     }
   };
 
