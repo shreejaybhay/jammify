@@ -33,6 +33,9 @@ export const metadata = {
   ],
   authors: [{ name: "Jammify Team" }],
   creator: "Jammify",
+  verification: {
+    google: "yHCHXQ0w3bP3lxDxmZMODiK9_Y0eDk9W2Zi52Xs1Dg0",
+  },
   icons: {
     icon: [
       { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
