@@ -410,7 +410,7 @@ export function FullscreenMusicPlayer({
     return -1;
   };
 
-  // Scroll to center the current lyric line (Spotify-like behavior)
+  // Scroll to center the current lyric line (Spotify-like behavior) - Optimized
   const scrollToCurrentLyric = (currentIndex) => {
     if (currentIndex === -1) return;
 
@@ -471,11 +471,16 @@ export function FullscreenMusicPlayer({
     // Calculate scroll position to center the line
     const scrollPosition = lineTop - containerHeight / 2 + lineHeight / 2;
 
-    // Smooth scroll to the calculated position
-    container.scrollTo({
-      top: Math.max(0, scrollPosition),
-      behavior: "smooth",
-    });
+    // Use smooth scrolling with optimized performance
+    if (container.scrollTo) {
+      container.scrollTo({
+        top: Math.max(0, scrollPosition),
+        behavior: "smooth",
+      });
+    } else {
+      // Fallback for older browsers
+      container.scrollTop = Math.max(0, scrollPosition);
+    }
   };
 
   const handleLikeToggle = async () => {
@@ -794,7 +799,7 @@ export function FullscreenMusicPlayer({
     setShowLyrics(!showLyrics);
   };
 
-  // Auto-scroll to current lyric line (Spotify-like behavior)
+  // Auto-scroll to current lyric line (Spotify-like behavior) - Optimized
   useEffect(() => {
     if (!showLyrics || !lyrics?.syncedLyrics) return;
 
@@ -802,10 +807,10 @@ export function FullscreenMusicPlayer({
     const currentLyricIndex = getCurrentLyricIndex(parsedLyrics, currentTime);
 
     if (currentLyricIndex !== -1) {
-      // Add a small delay to ensure DOM elements are rendered
-      setTimeout(() => {
+      // Use requestAnimationFrame for smoother performance
+      requestAnimationFrame(() => {
         scrollToCurrentLyric(currentLyricIndex);
-      }, 150);
+      });
     }
   }, [currentTime, showLyrics, lyrics?.syncedLyrics]);
 
@@ -1579,6 +1584,12 @@ export function FullscreenMusicPlayer({
                 <div
                   ref={mobileLyricsContainerRef}
                   className="flex-1 overflow-y-auto p-6 scrollbar-hide"
+                  style={{
+                    scrollBehavior: 'smooth',
+                    WebkitOverflowScrolling: 'touch',
+                    transform: 'translateZ(0)', // Force hardware acceleration
+                    willChange: 'scroll-position'
+                  }}
                 >
                   <div className="space-y-6 text-center max-w-md mx-auto">
                     {lyricsLoading ? (
@@ -1590,9 +1601,9 @@ export function FullscreenMusicPlayer({
                       </div>
                     ) : lyrics ? (
                       <>
-                        {/* Synced Lyrics */}
+                        {/* Synced Lyrics - Optimized with Motion Blur */}
                         {lyrics.syncedLyrics ? (
-                          <div className="space-y-3 text-white/90 leading-relaxed">
+                          <div className="space-y-4 text-white/90 leading-relaxed">
                             {parseSyncedLyrics(lyrics.syncedLyrics).map(
                               (line, index) => {
                                 const currentLyricIndex = getCurrentLyricIndex(
@@ -1603,6 +1614,8 @@ export function FullscreenMusicPlayer({
                                   index === currentLyricIndex;
                                 const isUpcomingLine =
                                   index === currentLyricIndex + 1;
+                                const isPreviousLine =
+                                  index === currentLyricIndex - 1;
 
                                 return (
                                   <p
@@ -1610,13 +1623,27 @@ export function FullscreenMusicPlayer({
                                     ref={(el) =>
                                       (mobileLyricLineRefs.current[index] = el)
                                     }
-                                    className={`text-lg transition-all duration-300 ${
+                                    className={`text-lg transition-all duration-700 ease-out transform will-change-transform ${
                                       isCurrentLine
-                                        ? "text-white font-bold text-xl scale-105"
+                                        ? "text-white font-bold text-xl scale-105 blur-0 opacity-100"
                                         : isUpcomingLine
-                                        ? "text-white/80 font-medium"
-                                        : "text-white/50"
+                                        ? "text-white/80 font-medium blur-0 opacity-90 scale-100"
+                                        : isPreviousLine
+                                        ? "text-white/60 blur-[0.5px] opacity-70 scale-95"
+                                        : "text-white/40 blur-[1px] opacity-50 scale-90"
                                     }`}
+                                    style={{
+                                      filter: isCurrentLine 
+                                        ? 'blur(0px) brightness(1.1)' 
+                                        : isUpcomingLine 
+                                        ? 'blur(0px) brightness(1)' 
+                                        : isPreviousLine
+                                        ? 'blur(0.5px) brightness(0.9)'
+                                        : 'blur(1px) brightness(0.7)',
+                                      textShadow: isCurrentLine 
+                                        ? '0 0 20px rgba(255,255,255,0.3)' 
+                                        : 'none'
+                                    }}
                                   >
                                     {line.text}
                                   </p>
@@ -1753,6 +1780,12 @@ export function FullscreenMusicPlayer({
                       <div
                         ref={desktopLyricsContainerRef}
                         className="h-[500px] lg:h-[600px] overflow-y-auto scrollbar-hide"
+                        style={{
+                          scrollBehavior: 'smooth',
+                          WebkitOverflowScrolling: 'touch',
+                          transform: 'translateZ(0)', // Force hardware acceleration
+                          willChange: 'scroll-position'
+                        }}
                       >
                         <div className="space-y-6 px-4 lg:px-6">
                           {lyricsLoading ? (
@@ -1764,9 +1797,9 @@ export function FullscreenMusicPlayer({
                             </div>
                           ) : lyrics ? (
                             <>
-                              {/* Synced Lyrics */}
+                              {/* Synced Lyrics - Optimized with Motion Blur */}
                               {lyrics.syncedLyrics ? (
-                                <div className="space-y-6 text-white/90 leading-relaxed">
+                                <div className="space-y-8 text-white/90 leading-relaxed">
                                   {parseSyncedLyrics(lyrics.syncedLyrics).map(
                                     (line, index) => {
                                       const currentLyricIndex =
@@ -1780,6 +1813,8 @@ export function FullscreenMusicPlayer({
                                         index === currentLyricIndex;
                                       const isUpcomingLine =
                                         index === currentLyricIndex + 1;
+                                      const isPreviousLine =
+                                        index === currentLyricIndex - 1;
 
                                       return (
                                         <p
@@ -1789,13 +1824,31 @@ export function FullscreenMusicPlayer({
                                               index
                                             ] = el)
                                           }
-                                          className={`text-xl lg:text-2xl transition-all duration-500 cursor-pointer hover:text-white/80 break-words ${
+                                          className={`text-xl lg:text-2xl transition-all duration-700 ease-out cursor-pointer hover:text-white/90 break-words transform will-change-transform ${
                                             isCurrentLine
-                                              ? "text-white font-bold text-2xl lg:text-3xl transform scale-105"
+                                              ? "text-white font-bold text-2xl lg:text-3xl scale-105 blur-0 opacity-100"
                                               : isUpcomingLine
-                                              ? "text-white/80 font-medium text-xl lg:text-2xl"
-                                              : "text-white/40 text-lg lg:text-xl"
+                                              ? "text-white/85 font-medium text-xl lg:text-2xl blur-0 opacity-95 scale-100"
+                                              : isPreviousLine
+                                              ? "text-white/65 blur-[0.5px] opacity-75 scale-98"
+                                              : "text-white/45 blur-[1px] opacity-60 scale-95"
                                           }`}
+                                          style={{
+                                            filter: isCurrentLine 
+                                              ? 'blur(0px) brightness(1.2) saturate(1.1)' 
+                                              : isUpcomingLine 
+                                              ? 'blur(0px) brightness(1.05) saturate(1.05)' 
+                                              : isPreviousLine
+                                              ? 'blur(0.5px) brightness(0.95) saturate(0.95)'
+                                              : 'blur(1px) brightness(0.8) saturate(0.8)',
+                                            textShadow: isCurrentLine 
+                                              ? '0 0 30px rgba(255,255,255,0.4), 0 0 60px rgba(255,255,255,0.2)' 
+                                              : isUpcomingLine
+                                              ? '0 0 15px rgba(255,255,255,0.2)'
+                                              : 'none',
+                                            backfaceVisibility: 'hidden',
+                                            WebkitFontSmoothing: 'antialiased'
+                                          }}
                                           onClick={() =>
                                             onSeek([
                                               parseSyncedLyrics(
