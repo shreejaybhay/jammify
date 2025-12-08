@@ -22,6 +22,7 @@ import {
   Disc,
   Share,
   Download,
+  ArrowUpDown,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -38,6 +39,7 @@ export function FullscreenMusicPlayer({
   currentSong,
   playlist = [],
   onSongChange,
+  onPlaylistReorder, // Add new prop for playlist reordering
   isOpen,
   onClose,
   audioRef,
@@ -67,6 +69,203 @@ export function FullscreenMusicPlayer({
     secondary: "#8b5cf6", // Default purple
     accent: "#a855f7", // Default purple
   });
+
+  // Drag and drop state
+  const [draggedIndex, setDraggedIndex] = useState(null);
+  const [dragOverIndex, setDragOverIndex] = useState(null);
+  const [localPlaylist, setLocalPlaylist] = useState([]);
+  
+  // Touch drag state
+  const [touchStartY, setTouchStartY] = useState(null);
+  const [touchCurrentY, setTouchCurrentY] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [draggedElement, setDraggedElement] = useState(null);
+
+  // Initialize local playlist when playlist changes
+  useEffect(() => {
+    setLocalPlaylist([...playlist]);
+  }, [playlist]);
+
+  // Mouse drag and drop handlers
+  const handleDragStart = (e, index) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/html", e.target.outerHTML);
+    e.target.style.opacity = "0.5";
+  };
+
+  const handleDragEnd = (e) => {
+    e.target.style.opacity = "1";
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  };
+
+  const handleDragEnter = (e, index) => {
+    e.preventDefault();
+    setDragOverIndex(index);
+  };
+
+  const handleDrop = (e, dropIndex) => {
+    e.preventDefault();
+    
+    if (draggedIndex === null || draggedIndex === dropIndex) return;
+
+    const newPlaylist = [...localPlaylist];
+    const draggedItem = newPlaylist[draggedIndex];
+    
+    // Remove dragged item
+    newPlaylist.splice(draggedIndex, 1);
+    
+    // Insert at new position
+    const insertIndex = draggedIndex < dropIndex ? dropIndex - 1 : dropIndex;
+    newPlaylist.splice(insertIndex, 0, draggedItem);
+    
+    setLocalPlaylist(newPlaylist);
+    
+    // Update the parent component's playlist using the new prop
+    if (onPlaylistReorder) {
+      const currentSongNewIndex = newPlaylist.findIndex(song => song.id === currentSong?.id);
+      onPlaylistReorder(newPlaylist, currentSong, currentSongNewIndex);
+    } else if (onSongChange) {
+      // Fallback to old method if onPlaylistReorder is not provided
+      const currentSongNewIndex = newPlaylist.findIndex(song => song.id === currentSong?.id);
+      if (currentSongNewIndex !== -1) {
+        onSongChange(currentSong, currentSongNewIndex, newPlaylist);
+      }
+    }
+    
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
+
+  // Touch drag handlers for mobile
+  const handleTouchStart = (e, index) => {
+    const touch = e.touches[0];
+    setTouchStartY(touch.clientY);
+    setTouchCurrentY(touch.clientY);
+    setDraggedIndex(index);
+    setIsDragging(false);
+    setDraggedElement(e.currentTarget);
+    
+    // Don't prevent default here to allow normal scrolling initially
+  };
+
+  const handleTouchMove = (e) => {
+    if (draggedIndex === null) return;
+    
+    const touch = e.touches[0];
+    setTouchCurrentY(touch.clientY);
+    
+    const deltaY = Math.abs(touch.clientY - touchStartY);
+    const deltaX = Math.abs(touch.clientX - (e.touches[0].clientX || touch.clientX));
+    
+    // Start dragging if moved more than 15px vertically and less horizontally (to distinguish from scroll)
+    if (deltaY > 15 && deltaX < 30 && !isDragging) {
+      setIsDragging(true);
+      if (draggedElement) {
+        draggedElement.style.opacity = "0.7";
+        draggedElement.style.transform = "scale(0.98)";
+        draggedElement.style.zIndex = "1000";
+        draggedElement.style.boxShadow = "0 10px 30px rgba(0,0,0,0.3)";
+      }
+      // Now prevent scrolling since we're dragging
+      e.preventDefault();
+    }
+    
+    if (isDragging) {
+      // Prevent scrolling while dragging
+      e.preventDefault();
+      
+      // Get all song elements
+      const songElements = document.querySelectorAll('[data-song-index]');
+      let closestIndex = draggedIndex;
+      let closestDistance = Infinity;
+      
+      // Find the closest song element to the touch point
+      songElements.forEach((element) => {
+        const rect = element.getBoundingClientRect();
+        const elementCenter = rect.top + rect.height / 2;
+        const distance = Math.abs(touch.clientY - elementCenter);
+        
+        if (distance < closestDistance) {
+          closestDistance = distance;
+          closestIndex = parseInt(element.getAttribute('data-song-index'));
+        }
+      });
+      
+      if (closestIndex !== draggedIndex && closestIndex !== dragOverIndex) {
+        setDragOverIndex(closestIndex);
+      }
+      
+      // Move the dragged element smoothly
+      if (draggedElement) {
+        const offset = touch.clientY - touchStartY;
+        draggedElement.style.transform = `translateY(${offset}px) scale(0.98)`;
+      }
+    }
+  };
+
+  const handleTouchEnd = (e) => {
+    if (draggedIndex === null) return;
+    
+    // Add a small delay to prevent accidental clicks
+    setTimeout(() => {
+      if (isDragging && dragOverIndex !== null && dragOverIndex !== draggedIndex) {
+        // Perform the reorder
+        const newPlaylist = [...localPlaylist];
+        const draggedItem = newPlaylist[draggedIndex];
+        
+        // Remove dragged item
+        newPlaylist.splice(draggedIndex, 1);
+        
+        // Insert at new position
+        const insertIndex = draggedIndex < dragOverIndex ? dragOverIndex - 1 : dragOverIndex;
+        newPlaylist.splice(insertIndex, 0, draggedItem);
+        
+        setLocalPlaylist(newPlaylist);
+        
+        // Update the parent component's playlist using the new prop
+        if (onPlaylistReorder) {
+          const currentSongNewIndex = newPlaylist.findIndex(song => song.id === currentSong?.id);
+          onPlaylistReorder(newPlaylist, currentSong, currentSongNewIndex);
+        } else if (onSongChange) {
+          // Fallback to old method if onPlaylistReorder is not provided
+          const currentSongNewIndex = newPlaylist.findIndex(song => song.id === currentSong?.id);
+          if (currentSongNewIndex !== -1) {
+            onSongChange(currentSong, currentSongNewIndex, newPlaylist);
+          }
+        }
+      }
+      
+      // Reset drag state with smooth transition
+      if (draggedElement) {
+        draggedElement.style.transition = "all 0.2s ease";
+        draggedElement.style.opacity = "1";
+        draggedElement.style.transform = "";
+        draggedElement.style.zIndex = "";
+        draggedElement.style.boxShadow = "";
+        
+        // Remove transition after animation
+        setTimeout(() => {
+          if (draggedElement) {
+            draggedElement.style.transition = "";
+          }
+        }, 200);
+      }
+      
+      setDraggedIndex(null);
+      setDragOverIndex(null);
+      setIsDragging(false);
+      setTouchStartY(null);
+      setTouchCurrentY(null);
+      setDraggedElement(null);
+    }, isDragging ? 100 : 0); // Small delay only if we were dragging
+  };
 
   // Refs for lyric scrolling - separate for mobile and desktop
   const mobileLyricsContainerRef = useRef(null);
@@ -433,7 +632,8 @@ export function FullscreenMusicPlayer({
 
   // Enhanced next/previous functions with shuffle and repeat support
   const handleNext = () => {
-    const currentPlaylist = getCurrentPlaylist();
+    // Use localPlaylist (reordered) if shuffle is off, otherwise use shuffled playlist
+    const currentPlaylist = isShuffled ? shuffledPlaylist : localPlaylist;
     if (currentPlaylist.length === 0) return;
 
     const currentIndex = currentPlaylist.findIndex(
@@ -458,13 +658,14 @@ export function FullscreenMusicPlayer({
 
     const nextSong = currentPlaylist[nextIndex];
     if (nextSong) {
-      onSongChange?.(nextSong, nextIndex);
+      onSongChange?.(nextSong, nextIndex, currentPlaylist);
       setIsPlaying(true); // Ensure auto-play
     }
   };
 
   const handlePrevious = () => {
-    const currentPlaylist = getCurrentPlaylist();
+    // Use localPlaylist (reordered) if shuffle is off, otherwise use shuffled playlist
+    const currentPlaylist = isShuffled ? shuffledPlaylist : localPlaylist;
     if (currentPlaylist.length === 0) return;
 
     const currentIndex = currentPlaylist.findIndex(
@@ -488,7 +689,7 @@ export function FullscreenMusicPlayer({
 
     const prevSong = currentPlaylist[prevIndex];
     if (prevSong) {
-      onSongChange?.(prevSong, prevIndex);
+      onSongChange?.(prevSong, prevIndex, currentPlaylist);
       setIsPlaying(true); // Ensure auto-play
     }
   };
@@ -500,7 +701,8 @@ export function FullscreenMusicPlayer({
 
     const handleSongEnd = () => {
       console.log("Song ended, playing next...");
-      const currentPlaylist = isShuffled ? shuffledPlaylist : playlist;
+      // Use localPlaylist (reordered) if shuffle is off, otherwise use shuffled playlist
+      const currentPlaylist = isShuffled ? shuffledPlaylist : localPlaylist;
       if (currentPlaylist.length === 0) return;
 
       const currentIndex = currentPlaylist.findIndex(
@@ -525,7 +727,7 @@ export function FullscreenMusicPlayer({
 
       const nextSong = currentPlaylist[nextIndex];
       if (nextSong) {
-        onSongChange?.(nextSong, nextIndex);
+        onSongChange?.(nextSong, nextIndex, currentPlaylist);
         setIsPlaying(true); // Ensure auto-play
       }
     };
@@ -539,7 +741,7 @@ export function FullscreenMusicPlayer({
     repeatMode,
     isShuffled,
     shuffledPlaylist,
-    playlist,
+    localPlaylist, // Add localPlaylist to dependencies
     onSongChange,
     setIsPlaying,
   ]);
@@ -1049,15 +1251,34 @@ export function FullscreenMusicPlayer({
                 </Button>
               </div>
               <div className="flex-1 overflow-y-auto scrollbar-hide">
-                {playlist.map((song, index) => (
+                {localPlaylist.map((song, index) => (
                   <div
                     key={song.id}
-                    onClick={() => {
-                      onSongChange?.(song, index);
-                      setShowPlaylist(false); // Close queue on mobile after selection
+                    data-song-index={index}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, index)}
+                    onDragEnd={handleDragEnd}
+                    onDragOver={handleDragOver}
+                    onDragEnter={(e) => handleDragEnter(e, index)}
+                    onDrop={(e) => handleDrop(e, index)}
+                    onTouchStart={(e) => handleTouchStart(e, index)}
+                    onTouchMove={handleTouchMove}
+                    onTouchEnd={handleTouchEnd}
+                    onClick={(e) => {
+                      // Only trigger song change if not dragging
+                      if (!isDragging) {
+                        onSongChange?.(song, index, localPlaylist);
+                        setShowPlaylist(false); // Close queue on mobile after selection
+                      }
                     }}
-                    className={`flex items-center gap-3 p-4 hover:bg-white/5 cursor-pointer ${
+                    className={`flex items-center gap-3 p-4 hover:bg-white/5 cursor-move transition-all duration-200 select-none ${
                       song.id === currentSong.id ? "bg-white/10" : ""
+                    } ${
+                      dragOverIndex === index && draggedIndex !== index
+                        ? "border-t-2 border-green-400"
+                        : ""
+                    } ${
+                      draggedIndex === index ? "opacity-50 scale-95" : ""
                     }`}
                   >
                     <div className="w-12 h-12 rounded bg-white/10 overflow-hidden flex-shrink-0">
@@ -1087,8 +1308,29 @@ export function FullscreenMusicPlayer({
                         {decodeHtmlEntities(getArtistNames(song))}
                       </p>
                     </div>
+                    <div className="flex-shrink-0 text-white/40">
+                      <ArrowUpDown className="w-4 h-4" />
+                    </div>
                   </div>
                 ))}
+                
+                {/* Reorder Queue Button */}
+                {playlist.length > 1 && (
+                  <div className="p-4 border-t border-white/10">
+                    <Button
+                      variant="ghost"
+                      className="w-full text-white/60 hover:bg-white/5 hover:text-white/80 rounded-lg p-3 flex items-center justify-center gap-2"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        // Add your reorder functionality here
+                        console.log("Reorder queue clicked");
+                      }}
+                    >
+                      <ArrowUpDown className="w-5 h-5" />
+                      <span className="text-sm font-medium">Reorder Queue</span>
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -1109,12 +1351,33 @@ export function FullscreenMusicPlayer({
               </div>
             </div>
             <div className="overflow-y-auto h-full pb-20 scrollbar-hide">
-              {playlist.map((song, index) => (
+              {localPlaylist.map((song, index) => (
                 <div
                   key={song.id}
-                  onClick={() => onSongChange?.(song, index)}
-                  className={`flex items-center gap-3 p-3 hover:bg-white/5 cursor-pointer ${
+                  data-song-index={index}
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, index)}
+                  onDragEnd={handleDragEnd}
+                  onDragOver={handleDragOver}
+                  onDragEnter={(e) => handleDragEnter(e, index)}
+                  onDrop={(e) => handleDrop(e, index)}
+                  onTouchStart={(e) => handleTouchStart(e, index)}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={handleTouchEnd}
+                  onClick={(e) => {
+                    // Only trigger song change if not dragging
+                    if (!isDragging) {
+                      onSongChange?.(song, index, localPlaylist);
+                    }
+                  }}
+                  className={`flex items-center gap-3 p-3 hover:bg-white/5 cursor-move transition-all duration-200 select-none ${
                     song.id === currentSong.id ? "bg-white/10" : ""
+                  } ${
+                    dragOverIndex === index && draggedIndex !== index
+                      ? "border-t-2 border-green-400"
+                      : ""
+                  } ${
+                    draggedIndex === index ? "opacity-50 scale-95" : ""
                   }`}
                 >
                   <div className="w-10 h-10 rounded bg-white/10 overflow-hidden flex-shrink-0">
@@ -1144,8 +1407,29 @@ export function FullscreenMusicPlayer({
                       {decodeHtmlEntities(getArtistNames(song))}
                     </p>
                   </div>
+                  <div className="flex-shrink-0 text-white/40">
+                    <ArrowUpDown className="w-3 h-3" />
+                  </div>
                 </div>
               ))}
+              
+              {/* Reorder Queue Button */}
+              {playlist.length > 1 && (
+                <div className="p-3 border-t border-white/10">
+                  <Button
+                    variant="ghost"
+                    className="w-full text-white/60 hover:bg-white/5 hover:text-white/80 rounded-lg p-2 flex items-center justify-center gap-2"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      // Add your reorder functionality here
+                      console.log("Reorder queue clicked");
+                    }}
+                  >
+                    <ArrowUpDown className="w-4 h-4" />
+                    <span className="text-xs font-medium">Reorder Queue</span>
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         </>
