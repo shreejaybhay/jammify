@@ -172,11 +172,11 @@ export function FullscreenMusicPlayer({
     const deltaX = Math.abs(touch.clientX - (draggedElement.touchStartX || touch.clientX));
     
     // Much stricter conditions for drag detection:
-    // 1. Must hold for at least 300ms (long press)
+    // 1. Must hold for at least 500ms (long press)
     // 2. Must move more than 40px vertically 
     // 3. Horizontal movement must be less than 20px (to avoid interfering with horizontal swipes)
     // 4. Must not be already dragging
-    if (timeDiff > 300 && deltaY > 40 && deltaX < 20 && !isDragging) {
+    if (timeDiff > 500 && deltaY > 40 && deltaX < 20 && !isDragging) {
       setIsDragging(true);
       if (draggedElement) {
         draggedElement.style.opacity = "0.7";
