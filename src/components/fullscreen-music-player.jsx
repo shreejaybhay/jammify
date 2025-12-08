@@ -1583,7 +1583,7 @@ export function FullscreenMusicPlayer({
                 {/* Lyrics Text */}
                 <div
                   ref={mobileLyricsContainerRef}
-                  className="flex-1 overflow-y-auto p-6 scrollbar-hide"
+                  className="flex-1 overflow-y-auto scrollbar-hide"
                   style={{
                     scrollBehavior: 'smooth',
                     WebkitOverflowScrolling: 'touch',
@@ -1591,7 +1591,7 @@ export function FullscreenMusicPlayer({
                     willChange: 'scroll-position'
                   }}
                 >
-                  <div className="space-y-6 text-center max-w-md mx-auto">
+                  <div className="space-y-6 text-center max-w-md mx-auto py-12 px-8">
                     {lyricsLoading ? (
                       <div className="flex items-center justify-center py-12">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white/60"></div>
@@ -1787,7 +1787,7 @@ export function FullscreenMusicPlayer({
                           willChange: 'scroll-position'
                         }}
                       >
-                        <div className="space-y-6 px-4 lg:px-6">
+                        <div className="space-y-6 py-16 px-8 lg:px-12">
                           {lyricsLoading ? (
                             <div className="flex items-center justify-center py-12">
                               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white/60"></div>
