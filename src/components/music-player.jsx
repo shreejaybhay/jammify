@@ -89,6 +89,134 @@ export function MusicPlayer({ currentSong, playlist = [], onSongChange }) {
     }
   }, [isPlaying, currentSong]);
 
+  // Media Session API - Rich media notifications
+  useEffect(() => {
+    if (!currentSong || typeof window === 'undefined' || !('mediaSession' in navigator)) return;
+
+    // Get artist name
+    const artistName = currentSong.artists?.primary?.[0]?.name || 
+                      currentSong.primaryArtists || 
+                      "Unknown Artist";
+
+    // Get album name
+    const albumName = currentSong.album?.name || "Unknown Album";
+
+    // Get song title
+    const songTitle = decodeHtmlEntities(currentSong.name || currentSong.title || "Unknown Song");
+
+    // Prepare artwork - use multiple sizes for better compatibility
+    const artwork = [];
+    if (currentSong.image && Array.isArray(currentSong.image)) {
+      // Use all available image sizes
+      currentSong.image.forEach((img, index) => {
+        if (img?.url) {
+          // Estimate sizes based on JioSaavn API pattern
+          const sizes = ['50x50', '150x150', '500x500'];
+          const size = sizes[index] || '500x500';
+          artwork.push({
+            src: img.url,
+            sizes: size,
+            type: 'image/jpeg'
+          });
+        }
+      });
+    }
+
+    // If no artwork, use app icon as fallback
+    if (artwork.length === 0) {
+      artwork.push({
+        src: '/icon-192.png',
+        sizes: '192x192',
+        type: 'image/png'
+      });
+    }
+
+    // Set media metadata
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: songTitle,
+      artist: artistName,
+      album: albumName,
+      artwork: artwork
+    });
+
+    // Set action handlers
+    navigator.mediaSession.setActionHandler('play', () => {
+      if (audioRef.current && !isPlaying) {
+        togglePlayPause();
+      }
+    });
+
+    navigator.mediaSession.setActionHandler('pause', () => {
+      if (audioRef.current && isPlaying) {
+        togglePlayPause();
+      }
+    });
+
+    navigator.mediaSession.setActionHandler('previoustrack', () => {
+      handlePrevious();
+    });
+
+    navigator.mediaSession.setActionHandler('nexttrack', () => {
+      handleNext();
+    });
+
+    navigator.mediaSession.setActionHandler('seekbackward', (details) => {
+      const skipTime = details.seekOffset || 10;
+      if (audioRef.current) {
+        audioRef.current.currentTime = Math.max(audioRef.current.currentTime - skipTime, 0);
+      }
+    });
+
+    navigator.mediaSession.setActionHandler('seekforward', (details) => {
+      const skipTime = details.seekOffset || 10;
+      if (audioRef.current) {
+        audioRef.current.currentTime = Math.min(
+          audioRef.current.currentTime + skipTime, 
+          audioRef.current.duration || 0
+        );
+      }
+    });
+
+    navigator.mediaSession.setActionHandler('seekto', (details) => {
+      if (details.seekTime && audioRef.current) {
+        audioRef.current.currentTime = details.seekTime;
+      }
+    });
+
+    // Update playback state
+    navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+
+    console.log('Media Session updated:', {
+      title: songTitle,
+      artist: artistName,
+      album: albumName,
+      artworkCount: artwork.length,
+      playbackState: isPlaying ? 'playing' : 'paused'
+    });
+
+  }, [currentSong, isPlaying]);
+
+  // Update media session position state
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('mediaSession' in navigator) || !audioRef.current) return;
+
+    const updatePositionState = () => {
+      if (navigator.mediaSession.setPositionState && duration > 0) {
+        try {
+          navigator.mediaSession.setPositionState({
+            duration: duration,
+            playbackRate: audioRef.current?.playbackRate || 1,
+            position: currentTime
+          });
+        } catch (error) {
+          console.log('Position state update failed:', error);
+        }
+      }
+    };
+
+    updatePositionState();
+  }, [currentTime, duration]);
+
   const togglePlayPause = () => {
     if (!audioRef.current || !currentSong) return;
 
