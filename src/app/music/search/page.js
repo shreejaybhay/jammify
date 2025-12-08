@@ -724,16 +724,19 @@ function SearchPageContent() {
                                   {index + 1}
                                 </div>
                                 <div className="relative flex-shrink-0">
-                                  <div className="w-10 h-10 rounded bg-muted overflow-hidden">
-                                    {song.image?.[1]?.url ? (
+                                  <div className="w-12 h-12 rounded bg-muted overflow-hidden">
+                                    {song.image?.length > 0 ? (
                                       <img
-                                        src={song.image[1].url}
+                                        src={song.image.find(img => img.quality === '500x500')?.url ||
+                                          song.image.find(img => img.quality === '150x150')?.url ||
+                                          song.image[song.image.length - 1]?.url}
                                         alt={song.title}
                                         className="w-full h-full object-cover"
+                                        loading="lazy"
                                       />
                                     ) : (
                                       <div className="w-full h-full flex items-center justify-center bg-muted">
-                                        <Play className="w-3 h-3 text-muted-foreground" />
+                                        <Play className="w-4 h-4 text-muted-foreground" />
                                       </div>
                                     )}
                                   </div>
@@ -993,11 +996,14 @@ function SearchPageContent() {
                             </div>
                             <div className="relative flex-shrink-0">
                               <div className="w-12 h-12 rounded bg-muted overflow-hidden">
-                                {song.image?.[1]?.url ? (
+                                {song.image?.length > 0 ? (
                                   <img
-                                    src={song.image[1].url}
+                                    src={song.image.find(img => img.quality === '500x500')?.url ||
+                                      song.image.find(img => img.quality === '150x150')?.url ||
+                                      song.image[song.image.length - 1]?.url}
                                     alt={song.title}
                                     className="w-full h-full object-cover"
+                                    loading="lazy"
                                   />
                                 ) : (
                                   <div className="w-full h-full flex items-center justify-center bg-muted">

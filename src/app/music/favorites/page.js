@@ -471,12 +471,15 @@ export default function FavoritesPage() {
                             )}
                           </div>
 
-                          <div className="w-12 h-12 rounded bg-gradient-to-br from-purple-500 to-pink-500 flex-shrink-0">
-                            {likedSong.image?.[0]?.url ? (
+                          <div className="w-12 h-12 rounded bg-gradient-to-br from-purple-500 to-pink-500 flex-shrink-0 overflow-hidden">
+                            {likedSong.image?.length > 0 ? (
                               <img
-                                src={likedSong.image[0].url}
+                                src={likedSong.image.find(img => img.quality === '500x500')?.url ||
+                                  likedSong.image.find(img => img.quality === '150x150')?.url ||
+                                  likedSong.image[likedSong.image.length - 1]?.url}
                                 alt={likedSong.songName}
                                 className="w-full h-full object-cover rounded"
+                                loading="lazy"
                                 onError={(e) => {
                                   e.target.style.display = 'none';
                                 }}
@@ -616,19 +619,22 @@ export default function FavoritesPage() {
                           </div>
 
                           <div className="flex items-center gap-3 min-w-0">
-                            <div className="w-10 h-10 rounded bg-gradient-to-br from-purple-500 to-pink-500 shrink-0">
-                              {likedSong.image?.[0]?.url ? (
+                            <div className="w-12 h-12 rounded bg-gradient-to-br from-purple-500 to-pink-500 shrink-0 overflow-hidden">
+                              {likedSong.image?.length > 0 ? (
                                 <img
-                                  src={likedSong.image[0].url}
+                                  src={likedSong.image.find(img => img.quality === '500x500')?.url ||
+                                    likedSong.image.find(img => img.quality === '150x150')?.url ||
+                                    likedSong.image[likedSong.image.length - 1]?.url}
                                   alt={likedSong.songName}
                                   className="w-full h-full object-cover rounded"
+                                  loading="lazy"
                                   onError={(e) => {
                                     e.target.style.display = 'none';
                                   }}
                                 />
                               ) : (
                                 <div className="w-full h-full flex items-center justify-center">
-                                  <Play className="w-3 h-3 opacity-50 text-white" />
+                                  <Play className="w-4 h-4 opacity-50 text-white" />
                                 </div>
                               )}
                             </div>
