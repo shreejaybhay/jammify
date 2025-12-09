@@ -1,3 +1,5 @@
+/* eslint-disable @next/next/no-img-element */
+/* eslint-disable react/no-unescaped-entities */
 "use client";
 
 import { useState, useEffect, useCallback, Suspense } from "react";
@@ -639,7 +641,7 @@ function SearchPageContent() {
 
                           return (
                             <div
-                              className="bg-gradient-to-br from-muted/40 to-muted/20 rounded-xl p-4 sm:p-6 relative overflow-hidden cursor-pointer group hover:from-muted/50 hover:to-muted/30 transition-all duration-300 border border-muted/20"
+                              className="bg-linear-to-br from-muted/40 to-muted/20 rounded-xl p-4 sm:p-6 relative overflow-hidden cursor-pointer group hover:from-muted/50 hover:to-muted/30 transition-all duration-300 border border-muted/20"
                               onClick={() => {
                                 if (resultType === 'song') {
                                   handlePlayClick(topResult, searchResults.songs?.results || [topResult]);
@@ -660,7 +662,7 @@ function SearchPageContent() {
                                         className="w-full h-full object-cover"
                                       />
                                     ) : (
-                                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-500 to-pink-500">
+                                      <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-purple-500 to-pink-500">
                                         <Play className="w-6 h-6 sm:w-8 sm:h-8 text-white/70" />
                                       </div>
                                     )}
@@ -720,10 +722,10 @@ function SearchPageContent() {
                                   }`}
                                 onClick={() => handlePlayClick(song, searchResults.songs.results)}
                               >
-                                <div className="text-sm text-muted-foreground w-4 text-center flex-shrink-0">
+                                <div className="text-sm text-muted-foreground w-4 text-center shrink-0">
                                   {index + 1}
                                 </div>
-                                <div className="relative flex-shrink-0">
+                                <div className="relative shrink-0">
                                   <div className="w-12 h-12 rounded bg-muted overflow-hidden">
                                     {song.image?.length > 0 ? (
                                       <img
@@ -756,7 +758,7 @@ function SearchPageContent() {
                                     {getArtistNames(song)}
                                   </p>
                                 </div>
-                                <div className="flex items-center gap-2 flex-shrink-0">
+                                <div className="flex items-center gap-2 shrink-0">
                                   {song.duration ? (
                                     <span className="text-xs text-muted-foreground min-w-[30px] text-right font-mono">
                                       {formatDuration(song.duration)}
@@ -882,14 +884,14 @@ function SearchPageContent() {
                                 }
 
                                 return (
-                                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-500 to-purple-600">
+                                  <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-blue-500 to-purple-600">
                                     <div className="text-white text-lg sm:text-2xl font-bold">
                                       {artist.title?.charAt(0)?.toUpperCase() || 'A'}
                                     </div>
                                   </div>
                                 );
                               })()}
-                              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-500 to-purple-600" style={{ display: 'none' }}>
+                              <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-blue-500 to-purple-600" style={{ display: 'none' }}>
                                 <div className="text-white text-lg sm:text-2xl font-bold">
                                   {artist.title?.charAt(0)?.toUpperCase() || 'A'}
                                 </div>
@@ -924,7 +926,7 @@ function SearchPageContent() {
                                   className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                                 />
                               ) : (
-                                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-500 to-pink-500">
+                                <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-purple-500 to-pink-500">
                                   <Play className="w-6 h-6 sm:w-8 sm:h-8 text-white/70" />
                                 </div>
                               )}
@@ -960,7 +962,7 @@ function SearchPageContent() {
                                   className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                                 />
                               ) : (
-                                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-500 to-pink-500">
+                                <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-purple-500 to-pink-500">
                                   <Play className="w-6 h-6 sm:w-8 sm:h-8 text-white/70" />
                                 </div>
                               )}
@@ -991,10 +993,10 @@ function SearchPageContent() {
                               }`}
                             onClick={() => handlePlayClick(song, searchResults.songs.results)}
                           >
-                            <div className="text-sm text-muted-foreground w-6 text-center flex-shrink-0">
+                            <div className="text-sm text-muted-foreground w-6 text-center shrink-0">
                               {index + 1}
                             </div>
-                            <div className="relative flex-shrink-0">
+                            <div className="relative shrink-0">
                               <div className="w-12 h-12 rounded bg-muted overflow-hidden">
                                 {song.image?.length > 0 ? (
                                   <img
@@ -1027,7 +1029,7 @@ function SearchPageContent() {
                                 {getArtistNames(song)}
                               </p>
                             </div>
-                            <div className="flex items-center gap-3 flex-shrink-0">
+                            <div className="flex items-center gap-3 shrink-0">
                               {song.duration ? (
                                 <span className="text-sm text-muted-foreground min-w-[40px] text-right font-mono">
                                   {formatDuration(song.duration)}
@@ -1146,7 +1148,7 @@ function SearchPageContent() {
                                 className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                               />
                             ) : (
-                              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-500 to-pink-500">
+                              <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-purple-500 to-pink-500">
                                 <Play className="w-8 h-8 text-white/70" />
                               </div>
                             )}
@@ -1200,14 +1202,14 @@ function SearchPageContent() {
                               }
 
                               return (
-                                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-500 to-purple-600">
+                                <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-blue-500 to-purple-600">
                                   <div className="text-white text-2xl font-bold">
                                     {artist.title?.charAt(0)?.toUpperCase() || 'A'}
                                   </div>
                                 </div>
                               );
                             })()}
-                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-500 to-purple-600" style={{ display: 'none' }}>
+                            <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-blue-500 to-purple-600" style={{ display: 'none' }}>
                               <div className="text-white text-2xl font-bold">
                                 {artist.title?.charAt(0)?.toUpperCase() || 'A'}
                               </div>
@@ -1249,7 +1251,7 @@ function SearchPageContent() {
                                 className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                               />
                             ) : (
-                              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-500 to-pink-500">
+                              <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-purple-500 to-pink-500">
                                 <Play className="w-8 h-8 text-white/70" />
                               </div>
                             )}

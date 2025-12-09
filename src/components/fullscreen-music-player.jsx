@@ -918,10 +918,10 @@ export function FullscreenMusicPlayer({
         {/* Main Content - Mobile First Design */}
         <div className="flex-1 flex flex-col px-4 sm:px-6 lg:px-12 pb-4 sm:pb-6 min-h-0 overflow-hidden">
           {/* Mobile Layout */}
-          <div className="md:hidden flex-1 flex flex-col">
-            {/* Album Art Container - Clean without white frame */}
-            <div className="flex-1 flex items-center justify-center py-8">
-              <div className="max-w-[320px] w-full">
+          <div className="md:hidden flex-1 flex flex-col min-h-0">
+            {/* Album Art Container - Responsive sizing */}
+            <div className="flex-1 flex items-center justify-center py-4 sm:py-8 min-h-0">
+              <div className="w-full max-w-[280px] min-[400px]:max-w-[340px] min-[430px]:max-w-[380px] sm:max-w-[85%] md:max-w-[90%] lg:max-w-[500px] px-2 sm:px-4">
                 <div className="aspect-square rounded-2xl overflow-hidden shadow-2xl bg-gradient-to-br from-gray-800 to-gray-900">
                   {currentSong.image?.[2]?.url ? (
                     <img
@@ -931,21 +931,21 @@ export function FullscreenMusicPlayer({
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
-                      <Play className="w-16 h-16 text-white/50" />
+                      <Play className="w-12 h-12 sm:w-16 sm:h-16 text-white/50" />
                     </div>
                   )}
                 </div>
               </div>
             </div>
 
-            {/* Song Info */}
-            <div className="px-4 mb-6">
-              <div className="flex items-center justify-between mb-4">
+            {/* Song Info - Compact for small screens */}
+            <div className="px-4 pb-4 flex-shrink-0">
+              <div className="flex items-center justify-between mb-3 sm:mb-4">
                 <div className="flex-1 min-w-0">
-                  <h1 className="text-xl font-bold text-white mb-1 truncate">
+                  <h1 className="text-lg sm:text-xl font-bold text-white mb-1 truncate">
                     {decodeHtmlEntities(currentSong.name)}
                   </h1>
-                  <p className="text-base text-white/70 truncate">
+                  <p className="text-sm sm:text-base text-white/70 truncate">
                     {getArtistNames(currentSong)}
                   </p>
                 </div>
@@ -955,12 +955,12 @@ export function FullscreenMusicPlayer({
                   variant="ghost"
                   size="sm"
                   onClick={handleLikeToggle}
-                  className={`flex-shrink-0 ml-4 ${
+                  className={`flex-shrink-0 ml-4 p-2 ${
                     isLiked(currentSong.id) ? "text-green-500" : "text-white/60"
                   }`}
                 >
                   <Heart
-                    className={`w-6 h-6 ${
+                    className={`w-5 h-5 sm:w-6 sm:h-6 ${
                       isLiked(currentSong.id) ? "fill-green-500" : ""
                     }`}
                   />
@@ -968,7 +968,7 @@ export function FullscreenMusicPlayer({
               </div>
 
               {/* Progress Bar */}
-              <div className="mb-6">
+              <div className="mb-4 sm:mb-6">
                 <Slider
                   value={[currentTime]}
                   max={duration || 100}
@@ -976,23 +976,23 @@ export function FullscreenMusicPlayer({
                   onValueChange={onSeek}
                   className="w-full [&_[role=slider]]:bg-white [&_[role=slider]]:border-white [&_[role=slider]]:w-4 [&_[role=slider]]:h-4 [&_.bg-primary]:bg-white"
                 />
-                <div className="flex justify-between text-sm text-white/60 mt-2">
+                <div className="flex justify-between text-xs sm:text-sm text-white/60 mt-2">
                   <span>{formatTime(currentTime)}</span>
                   <span>{formatTime(duration)}</span>
                 </div>
               </div>
 
-              {/* Controls */}
-              <div className="flex items-center justify-center gap-8 mb-6">
+              {/* Controls - Compact spacing for small screens */}
+              <div className="flex items-center justify-center gap-4 sm:gap-8 mb-4 sm:mb-6">
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setIsShuffled(!isShuffled)}
-                  className={`${
+                  className={`p-2 ${
                     isShuffled ? "text-green-400" : "text-white/60"
                   }`}
                 >
-                  <Shuffle className="w-5 h-5" />
+                  <Shuffle className="w-4 h-4 sm:w-5 sm:h-5" />
                 </Button>
 
                 <Button
@@ -1000,21 +1000,21 @@ export function FullscreenMusicPlayer({
                   size="lg"
                   onClick={handlePrevious}
                   disabled={playlist.length === 0}
-                  className="text-white"
+                  className="text-white p-2"
                 >
-                  <SkipBack className="w-7 h-7" />
+                  <SkipBack className="w-6 h-6 sm:w-7 sm:h-7" />
                 </Button>
 
                 <Button
                   variant="default"
                   size="lg"
                   onClick={onTogglePlayPause}
-                  className="rounded-full w-16 h-16 bg-white text-black hover:bg-white/90"
+                  className="rounded-full w-14 h-14 sm:w-16 sm:h-16 bg-white text-black hover:bg-white/90"
                 >
                   {isPlaying ? (
-                    <Pause className="w-8 h-8" />
+                    <Pause className="w-7 h-7 sm:w-8 sm:h-8" />
                   ) : (
-                    <Play className="w-8 h-8 ml-0.5" />
+                    <Play className="w-7 h-7 sm:w-8 sm:h-8 ml-0.5" />
                   )}
                 </Button>
 
@@ -1023,20 +1023,20 @@ export function FullscreenMusicPlayer({
                   size="lg"
                   onClick={handleNext}
                   disabled={playlist.length === 0}
-                  className="text-white"
+                  className="text-white p-2"
                 >
-                  <SkipForward className="w-7 h-7" />
+                  <SkipForward className="w-6 h-6 sm:w-7 sm:h-7" />
                 </Button>
 
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={toggleRepeat}
-                  className={`relative ${
+                  className={`relative p-2 ${
                     repeatMode !== "off" ? "text-green-400" : "text-white/60"
                   }`}
                 >
-                  <Repeat className="w-5 h-5" />
+                  <Repeat className="w-4 h-4 sm:w-5 sm:h-5" />
                   {repeatMode === "one" && (
                     <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full flex items-center justify-center text-xs text-black font-bold">
                       1
@@ -1045,24 +1045,24 @@ export function FullscreenMusicPlayer({
                 </Button>
               </div>
 
-              {/* Bottom Actions - Mobile (corner aligned) */}
-              <div className="flex items-center justify-between">
+              {/* Bottom Actions - Always visible with proper spacing */}
+              <div className="flex items-center justify-between px-2">
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setShowPlaylist(!showPlaylist)}
-                  className="text-white/60"
+                  className="text-white/60 hover:text-white p-3 rounded-full hover:bg-white/10"
                 >
-                  <ListMusic className="w-6 h-6" />
+                  <ListMusic className="w-5 h-5 sm:w-6 sm:h-6" />
                 </Button>
 
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="text-white/60"
+                  className="text-white/60 hover:text-white p-3 rounded-full hover:bg-white/10"
                   onClick={handleLyricsToggle}
                 >
-                  <Mic className="w-6 h-6" />
+                  <Mic className="w-5 h-5 sm:w-6 sm:h-6" />
                 </Button>
               </div>
             </div>

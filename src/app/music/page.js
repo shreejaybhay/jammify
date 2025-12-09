@@ -1,8 +1,10 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import Image from "next/image";
 import { AppSidebar } from "@/components/app-sidebar";
 import {
   Breadcrumb,
@@ -20,7 +22,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Play, Heart, List } from "lucide-react";
+import { Play, Heart, List, Search } from "lucide-react";
 import { useLikedSongs } from "@/hooks/useLikedSongs";
 import { useLikedPlaylists } from "@/hooks/useLikedPlaylists";
 
@@ -137,7 +139,7 @@ export default function MusicPage() {
   // Extract dominant color from image
   const extractDominantColor = (imageUrl, playlistId) => {
     return new Promise((resolve) => {
-      const img = new Image();
+      const img = new window.Image();
       img.crossOrigin = 'anonymous';
 
       img.onload = () => {
@@ -219,7 +221,7 @@ export default function MusicPage() {
         }
       });
     }
-  }, [likedPlaylists, playlistsLoading]);
+  }, [likedPlaylists, playlistsLoading, playlistColors]);
 
 
   return (
@@ -227,22 +229,41 @@ export default function MusicPage() {
       <AppSidebar />
       <SidebarInset>
         <header className="sticky top-0 z-50 flex h-16 shrink-0 items-center gap-2 border-b bg-background transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
-          <div className="flex items-center gap-2 px-3 md:px-4">
-            <SidebarTrigger className="-ml-1" />
-            <Separator orientation="vertical" className="mr-2 data-[orientation=vertical]:h-4" />
-            <Breadcrumb>
-              <BreadcrumbList>
-                <BreadcrumbItem className="hidden md:block">
-                  <BreadcrumbLink href="/music">
-                    Music
-                  </BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator className="hidden md:block" />
-                <BreadcrumbItem>
-                  <BreadcrumbPage>Discover</BreadcrumbPage>
-                </BreadcrumbItem>
-              </BreadcrumbList>
-            </Breadcrumb>
+          <div className="flex items-center justify-between w-full gap-2 px-3 md:px-4">
+            <div className="flex items-center gap-2">
+              <SidebarTrigger className="-ml-1" />
+              <Separator orientation="vertical" className="mr-2 data-[orientation=vertical]:h-4" />
+              <Breadcrumb>
+                <BreadcrumbList>
+                  <BreadcrumbItem className="hidden md:block">
+                    <BreadcrumbLink href="/music">
+                      Music
+                    </BreadcrumbLink>
+                  </BreadcrumbItem>
+                  <BreadcrumbSeparator className="hidden md:block" />
+                  <BreadcrumbItem>
+                    <BreadcrumbPage>Discover</BreadcrumbPage>
+                  </BreadcrumbItem>
+                </BreadcrumbList>
+              </Breadcrumb>
+            </div>
+            
+            {/* Search Button */}
+            <div className="relative">
+              <Button
+                variant="ghost"
+                onClick={() => router.push('/music/search')}
+                className="flex items-center justify-start gap-3 bg-muted/30 hover:bg-muted/50 border border-muted-foreground/20 hover:border-muted-foreground/30 transition-all duration-200 rounded-full h-9 w-32 sm:w-40 md:w-48 lg:w-56 xl:w-64 px-4"
+              >
+                <Search className="w-4 h-4 text-muted-foreground shrink-0" />
+                <span className="hidden sm:block text-sm text-muted-foreground text-left truncate">
+                  Search music...
+                </span>
+                <span className="sm:hidden text-xs text-muted-foreground">
+                  Search
+                </span>
+              </Button>
+            </div>
           </div>
         </header>
 
@@ -372,10 +393,10 @@ export default function MusicPage() {
             )}
           </div>
 
-          {/* It's New Music Friday Section */}
+          {/* "New release" */}
           <div className="space-y-3 md:space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl md:text-2xl font-bold">It's New Music Friday!</h2>
+              <h2 className="text-xl md:text-2xl font-bold">New Release</h2>
               <Button
                 variant="ghost"
                 size="sm"

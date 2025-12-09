@@ -115,7 +115,7 @@ export default function AlbumPage() {
 
   const extractDominantColor = (imageUrl) => {
     return new Promise((resolve) => {
-      const img = new Image();
+      const img = new window.Image();
       img.crossOrigin = 'anonymous';
 
       img.onload = () => {
