@@ -6,6 +6,7 @@ import AuthProvider from "@/components/auth-provider";
 import { MusicPlayerProvider } from "@/contexts/music-player-context";
 import { MusicPlayerWrapper } from "@/components/music-player-wrapper";
 import { GlobalOnlineTracker } from "@/components/global-online-tracker";
+import UserActivityTracker from "@/components/analytics/UserActivityTracker";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -79,6 +80,7 @@ export default function RootLayout({ children }) {
           >
             <MusicPlayerProvider>
               <GlobalOnlineTracker />
+              <UserActivityTracker />
               {children}
               <MusicPlayerWrapper />
             </MusicPlayerProvider>

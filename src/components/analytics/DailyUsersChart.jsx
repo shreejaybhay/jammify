@@ -1,37 +1,43 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
-import { 
-  LineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
+import { useState, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
   ResponsiveContainer,
   AreaChart,
-  Area
-} from 'recharts';
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  Minus, 
-  Users, 
+  Area,
+} from "recharts";
+import {
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  Users,
   Calendar,
   BarChart3,
-  RefreshCw
-} from 'lucide-react';
+  RefreshCw,
+} from "lucide-react";
 
-export default function DailyUsersChart({ 
-  days = 30, 
-  chartType = 'area', // 'line' or 'area'
+export default function DailyUsersChart({
+  days = 30,
+  chartType = "area", // 'line' or 'area'
   showSummary = true,
   autoRefresh = false,
-  refreshInterval = 300000 // 5 minutes
+  refreshInterval = 300000, // 5 minutes
 }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -42,19 +48,21 @@ export default function DailyUsersChart({
   const fetchData = async (showRefreshIndicator = false) => {
     try {
       if (showRefreshIndicator) setRefreshing(true);
-      
-      const response = await fetch(`/api/analytics/daily-users?days=${selectedDays}&format=chart`);
+
+      const response = await fetch(
+        `/api/analytics/daily-users?days=${selectedDays}&format=chart&_t=${Date.now()}`
+      );
       const result = await response.json();
-      
+
       if (result.success) {
         setData(result.data);
         setError(null);
       } else {
-        setError(result.error || 'Failed to fetch data');
+        setError(result.error || "Failed to fetch data");
       }
     } catch (err) {
-      setError('Network error occurred');
-      console.error('Error fetching daily users data:', err);
+      setError("Network error occurred");
+      console.error("Error fetching daily users data:", err);
     } finally {
       setLoading(false);
       if (showRefreshIndicator) setRefreshing(false);
@@ -68,11 +76,11 @@ export default function DailyUsersChart({
   // Auto refresh
   useEffect(() => {
     if (!autoRefresh) return;
-    
+
     const interval = setInterval(() => {
       fetchData(true);
     }, refreshInterval);
-    
+
     return () => clearInterval(interval);
   }, [autoRefresh, refreshInterval, selectedDays]);
 
@@ -110,7 +118,9 @@ export default function DailyUsersChart({
     return (
       <Card className="w-full">
         <CardHeader>
-          <CardTitle className="text-red-600">Error Loading Analytics</CardTitle>
+          <CardTitle className="text-red-600">
+            Error Loading Analytics
+          </CardTitle>
           <CardDescription>{error}</CardDescription>
         </CardHeader>
         <CardContent>
@@ -127,9 +137,9 @@ export default function DailyUsersChart({
 
   const getTrendIcon = () => {
     switch (summary.trendDirection) {
-      case 'up':
+      case "up":
         return <TrendingUp className="w-4 h-4 text-green-600" />;
-      case 'down':
+      case "down":
         return <TrendingDown className="w-4 h-4 text-red-600" />;
       default:
         return <Minus className="w-4 h-4 text-gray-600" />;
@@ -138,12 +148,12 @@ export default function DailyUsersChart({
 
   const getTrendColor = () => {
     switch (summary.trendDirection) {
-      case 'up':
-        return 'text-green-600';
-      case 'down':
-        return 'text-red-600';
+      case "up":
+        return "text-green-600";
+      case "down":
+        return "text-red-600";
       default:
-        return 'text-gray-600';
+        return "text-gray-600";
     }
   };
 
@@ -153,7 +163,10 @@ export default function DailyUsersChart({
         <div className="bg-background border rounded-lg p-3 shadow-lg">
           <p className="font-medium">{label}</p>
           <p className="text-sm text-muted-foreground">
-            <span className="font-medium text-foreground">{payload[0].value}</span> active users
+            <span className="font-medium text-foreground">
+              {payload[0].value}
+            </span>{" "}
+            active users
           </p>
         </div>
       );
@@ -181,12 +194,14 @@ export default function DailyUsersChart({
               onClick={handleRefresh}
               disabled={refreshing}
             >
-              <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+              <RefreshCw
+                className={`w-4 h-4 mr-2 ${refreshing ? "animate-spin" : ""}`}
+              />
               Refresh
             </Button>
           </div>
         </div>
-        
+
         {/* Time period selector */}
         <div className="flex gap-2 mt-4">
           {[7, 14, 30, 60, 90].map((dayOption) => (
@@ -201,7 +216,7 @@ export default function DailyUsersChart({
           ))}
         </div>
       </CardHeader>
-      
+
       <CardContent>
         {/* Summary Stats */}
         {showSummary && (
@@ -211,9 +226,11 @@ export default function DailyUsersChart({
                 <Users className="w-4 h-4" />
                 Total Users
               </div>
-              <div className="text-2xl font-bold">{summary.totalUsers.toLocaleString()}</div>
+              <div className="text-2xl font-bold">
+                {summary.totalUsers.toLocaleString()}
+              </div>
             </div>
-            
+
             <div className="bg-muted/50 rounded-lg p-4">
               <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
                 <Calendar className="w-4 h-4" />
@@ -221,7 +238,7 @@ export default function DailyUsersChart({
               </div>
               <div className="text-2xl font-bold">{summary.averageUsers}</div>
             </div>
-            
+
             <div className="bg-muted/50 rounded-lg p-4">
               <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
                 <TrendingUp className="w-4 h-4" />
@@ -229,16 +246,19 @@ export default function DailyUsersChart({
               </div>
               <div className="text-2xl font-bold">{summary.maxUsers}</div>
             </div>
-            
+
             <div className="bg-muted/50 rounded-lg p-4">
               <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
                 {getTrendIcon()}
                 7-Day Trend
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-2xl font-bold">{summary.last7DaysAverage}</span>
+                <span className="text-2xl font-bold">
+                  {summary.last7DaysAverage}
+                </span>
                 <Badge variant="outline" className={getTrendColor()}>
-                  {summary.trendPercentage > 0 ? '+' : ''}{summary.trendPercentage}%
+                  {summary.trendPercentage > 0 ? "+" : ""}
+                  {summary.trendPercentage}%
                 </Badge>
               </div>
             </div>
@@ -248,20 +268,20 @@ export default function DailyUsersChart({
         {/* Chart */}
         <div className="h-64 w-full">
           <ResponsiveContainer width="100%" height="100%">
-            {chartType === 'area' ? (
+            {chartType === "area" ? (
               <AreaChart data={chartData}>
-                <CartesianGrid 
-                  strokeDasharray="3 3" 
-                  stroke="#374151" 
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="#374151"
                   strokeOpacity={0.4}
                 />
-                <XAxis 
-                  dataKey="formattedDate" 
+                <XAxis
+                  dataKey="formattedDate"
                   tick={{ fontSize: 11, fill: "#9CA3AF" }}
                   axisLine={{ stroke: "#4B5563" }}
                   tickLine={{ stroke: "#4B5563" }}
                 />
-                <YAxis 
+                <YAxis
                   tick={{ fontSize: 11, fill: "#9CA3AF" }}
                   axisLine={{ stroke: "#4B5563" }}
                   tickLine={{ stroke: "#4B5563" }}
@@ -278,18 +298,18 @@ export default function DailyUsersChart({
               </AreaChart>
             ) : (
               <LineChart data={chartData}>
-                <CartesianGrid 
-                  strokeDasharray="3 3" 
-                  stroke="#374151" 
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="#374151"
                   strokeOpacity={0.4}
                 />
-                <XAxis 
-                  dataKey="formattedDate" 
+                <XAxis
+                  dataKey="formattedDate"
                   tick={{ fontSize: 11, fill: "#9CA3AF" }}
                   axisLine={{ stroke: "#4B5563" }}
                   tickLine={{ stroke: "#4B5563" }}
                 />
-                <YAxis 
+                <YAxis
                   tick={{ fontSize: 11, fill: "#9CA3AF" }}
                   axisLine={{ stroke: "#4B5563" }}
                   tickLine={{ stroke: "#4B5563" }}
@@ -301,13 +321,18 @@ export default function DailyUsersChart({
                   stroke="#60A5FA"
                   strokeWidth={2}
                   dot={{ fill: "#60A5FA", strokeWidth: 0, r: 3 }}
-                  activeDot={{ r: 5, stroke: "#60A5FA", strokeWidth: 2, fill: "#1F2937" }}
+                  activeDot={{
+                    r: 5,
+                    stroke: "#60A5FA",
+                    strokeWidth: 2,
+                    fill: "#1F2937",
+                  }}
                 />
               </LineChart>
             )}
           </ResponsiveContainer>
         </div>
-        
+
         {/* Chart info */}
         <div className="flex items-center justify-between mt-4 text-sm text-muted-foreground">
           <span>Showing last {selectedDays} days</span>

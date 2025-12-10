@@ -3,24 +3,30 @@ import { getServerSession } from 'next-auth/next';
 import connectDB from '@/lib/mongodb';
 import DailyActiveUser from '@/models/DailyActiveUser';
 
-// Cache for daily stats (5 minutes TTL)
-let dailyStatsCache = {
-  data: null,
-  timestamp: 0,
-  ttl: 5 * 60 * 1000 // 5 minutes
-};
+// Cache for daily stats (5 minutes TTL) - keyed by query parameters
+let dailyStatsCache = new Map();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
-function getCachedDailyStats() {
-  const now = Date.now();
-  if (dailyStatsCache.data && (now - dailyStatsCache.timestamp) < dailyStatsCache.ttl) {
-    return dailyStatsCache.data;
+function getCacheKey(days, format) {
+  return `${days}-${format}`;
+}
+
+function getCachedDailyStats(days, format) {
+  const key = getCacheKey(days, format);
+  const cached = dailyStatsCache.get(key);
+  
+  if (cached && (Date.now() - cached.timestamp) < CACHE_TTL) {
+    return cached.data;
   }
   return null;
 }
 
-function setCachedDailyStats(data) {
-  dailyStatsCache.data = data;
-  dailyStatsCache.timestamp = Date.now();
+function setCachedDailyStats(days, format, data) {
+  const key = getCacheKey(days, format);
+  dailyStatsCache.set(key, {
+    data,
+    timestamp: Date.now()
+  });
 }
 
 export async function GET(request) {
@@ -34,8 +40,15 @@ export async function GET(request) {
       );
     }
 
-    // Check cache first
-    const cachedData = getCachedDailyStats();
+    await connectDB();
+    
+    // Get query parameters
+    const { searchParams } = new URL(request.url);
+    const days = parseInt(searchParams.get('days')) || 30;
+    const format = searchParams.get('format') || 'chart'; // 'chart' or 'table'
+    
+    // Check cache first with query parameters
+    const cachedData = getCachedDailyStats(days, format);
     if (cachedData) {
       return NextResponse.json({
         success: true,
@@ -44,14 +57,7 @@ export async function GET(request) {
         timestamp: new Date().toISOString()
       });
     }
-
-    await connectDB();
-
-    // Get query parameters
-    const { searchParams } = new URL(request.url);
-    const days = parseInt(searchParams.get('days')) || 30;
-    const format = searchParams.get('format') || 'chart'; // 'chart' or 'table'
-
+    
     // Fetch daily stats
     const stats = await DailyActiveUser.getDailyStats(days);
 
@@ -78,8 +84,8 @@ export async function GET(request) {
     }
 
     // Cache the result
-    setCachedDailyStats(responseData);
-
+    setCachedDailyStats(days, format, responseData);
+    
     return NextResponse.json({
       success: true,
       data: responseData,
