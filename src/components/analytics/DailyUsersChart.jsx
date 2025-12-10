@@ -50,7 +50,7 @@ export default function DailyUsersChart({
       if (showRefreshIndicator) setRefreshing(true);
 
       const response = await fetch(
-        `/api/analytics/daily-users?days=${selectedDays}&format=chart`
+        `/api/analytics/daily-users?days=${selectedDays}&format=chart&_t=${Date.now()}`
       );
       const result = await response.json();
 
