@@ -6,7 +6,7 @@ import DailyActiveUser from '@/models/DailyActiveUser';
 export async function POST(request) {
   try {
     const session = await getServerSession();
-    
+
     if (!session?.user?.email) {
       return NextResponse.json(
         { success: false, error: 'Authentication required' },
@@ -15,19 +15,19 @@ export async function POST(request) {
     }
 
     await connectDB();
-    
+
     // Record user activity for today
     const result = await DailyActiveUser.recordUserActivity(
       session.user.email,
       session.user.name
     );
-    
+
     return NextResponse.json({
       success: true,
       ...result,
       timestamp: new Date().toISOString()
     });
-    
+
   } catch (error) {
     console.error('Error recording user activity:', error);
     return NextResponse.json(
@@ -41,7 +41,7 @@ export async function POST(request) {
 export async function GET(request) {
   try {
     const session = await getServerSession();
-    
+
     if (!session?.user?.email) {
       return NextResponse.json(
         { success: false, error: 'Authentication required' },
@@ -50,19 +50,19 @@ export async function GET(request) {
     }
 
     await connectDB();
-    
+
     const today = new Date().toISOString().split('T')[0];
     const existingRecord = await DailyActiveUser.findOne({
       date: today,
       'users.email': session.user.email
     });
-    
+
     return NextResponse.json({
       success: true,
       recordedToday: !!existingRecord,
       date: today
     });
-    
+
   } catch (error) {
     console.error('Error checking user activity:', error);
     return NextResponse.json(

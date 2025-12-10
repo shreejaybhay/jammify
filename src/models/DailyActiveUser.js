@@ -36,47 +36,80 @@ dailyActiveUserSchema.statics.recordUserActivity = async function(userEmail, use
   const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
   
   try {
-    // Step 1: Check if user already exists for today
-    const existingRecord = await this.findOne({
-      date: today,
-      'users.email': userEmail
-    });
-    
-    if (existingRecord) {
-      return { success: true, message: 'User already recorded for today', isNew: false };
-    }
-    
-    // Step 2: Find or create today's document
-    let todayRecord = await this.findOne({ date: today });
-    
-    if (!todayRecord) {
-      // Create new document for today
-      todayRecord = new this({
+    // First, try to add user to existing document (if user doesn't already exist)
+    const result = await this.findOneAndUpdate(
+      {
         date: today,
-        users: [],
-        totalUsers: 0
-      });
+        'users.email': { $ne: userEmail } // Only update if user email doesn't exist
+      },
+      {
+        $push: {
+          users: {
+            email: userEmail,
+            name: userName,
+            firstSeenAt: new Date()
+          }
+        },
+        $inc: { totalUsers: 1 }
+      },
+      { new: true }
+    );
+    
+    if (result) {
+      return { success: true, message: 'User activity recorded', isNew: true };
     }
     
-    // Step 3: Add user if not already present (double-check)
-    const userExists = todayRecord.users.some(user => user.email === userEmail);
+    // If no result, either document doesn't exist or user already exists
+    // Check if document exists for today
+    const existingDoc = await this.findOne({ date: today });
     
-    if (userExists) {
+    if (existingDoc) {
+      // Document exists, so user must already be recorded
       return { success: true, message: 'User already recorded for today', isNew: false };
     }
     
-    // Step 4: Add user and save
-    todayRecord.users.push({
-      email: userEmail,
-      name: userName,
-      firstSeenAt: new Date()
+    // Document doesn't exist, create it with this user
+    const newDoc = await this.create({
+      date: today,
+      users: [{
+        email: userEmail,
+        name: userName,
+        firstSeenAt: new Date()
+      }],
+      totalUsers: 1
     });
-    todayRecord.totalUsers = todayRecord.users.length;
-    
-    await todayRecord.save();
     
     return { success: true, message: 'User activity recorded', isNew: true };
+    
   } catch (error) {
+    // Handle duplicate key error for date (if two requests try to create same date document)
+    if (error.code === 11000 && error.keyPattern?.date) {
+      // Document was created by another request, try to add user to it
+      const updateResult = await this.findOneAndUpdate(
+        {
+          date: today,
+          'users.email': { $ne: userEmail }
+        },
+        {
+          $push: {
+            users: {
+              email: userEmail,
+              name: userName,
+              firstSeenAt: new Date()
+            }
+          },
+          $inc: { totalUsers: 1 }
+        },
+        { new: true }
+      );
+      
+      if (updateResult) {
+        return { success: true, message: 'User activity recorded', isNew: true };
+      } else {
+        return { success: true, message: 'User already recorded for today', isNew: false };
+      }
+    }
+    
     console.error('Error recording user activity:', error);
     throw error;
   }
