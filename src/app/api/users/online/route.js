@@ -4,25 +4,66 @@ import connectDB from '@/lib/mongodb';
 import User from '@/models/User';
 import mongoose from 'mongoose';
 
-// GET - Get online users count and list
+// Simple in-memory cache for online users (5-second cache)
+let onlineUsersCache = {
+  data: null,
+  timestamp: 0,
+  ttl: 5000 // 5 seconds
+};
+
+function getCachedOnlineUsers() {
+  const now = Date.now();
+  if (onlineUsersCache.data && (now - onlineUsersCache.timestamp) < onlineUsersCache.ttl) {
+    return onlineUsersCache.data;
+  }
+  return null;
+}
+
+function setCachedOnlineUsers(data) {
+  onlineUsersCache.data = data;
+  onlineUsersCache.timestamp = Date.now();
+}
+
+// GET - Get online users count and list with enhanced status and caching
 export async function GET(request) {
   try {
-    await connectDB();
-    
     const { searchParams } = new URL(request.url);
     const includeList = searchParams.get('includeList') === 'true';
+    
+    // Check cache first for list requests
+    if (includeList) {
+      const cached = getCachedOnlineUsers();
+      if (cached) {
+        return NextResponse.json({
+          ...cached,
+          cached: true,
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+    
+    await connectDB();
     
     const onlineCount = await User.countOnlineUsers();
     
     const response = {
       success: true,
       onlineCount,
+      timestamp: new Date().toISOString(),
+      cached: false
     };
     
-    // Optionally include the list of online users
+    // Include enhanced user list with status information
     if (includeList) {
-      const onlineUsers = await User.getOnlineUsers();
+      const onlineUsers = await User.getOnlineUsersWithStatus();
       response.onlineUsers = onlineUsers;
+      
+      // Cache the response for future requests
+      setCachedOnlineUsers({
+        success: true,
+        onlineCount,
+        onlineUsers
+      });
     }
     
     return NextResponse.json(response);
@@ -36,7 +77,7 @@ export async function GET(request) {
   }
 }
 
-// POST - Update user's last active timestamp
+// POST - Enhanced heartbeat with activity tracking
 export async function POST(request) {
   try {
     const session = await getServerSession();
@@ -50,11 +91,30 @@ export async function POST(request) {
 
     await connectDB();
     
-    // Update user's last active timestamp
+    // Parse request body for additional heartbeat data
+    let heartbeatData = {};
+    try {
+      heartbeatData = await request.json();
+    } catch (e) {
+      // If no body or invalid JSON, continue with default behavior
+    }
+    
+    const now = new Date();
+    
+    // Update user's last active timestamp with enhanced tracking
+    const updateData = {
+      lastActive: now
+    };
+    
+    // Add heartbeat metadata if provided
+    if (heartbeatData.timestamp) {
+      updateData.lastHeartbeat = new Date(heartbeatData.timestamp);
+    }
+    
     const user = await User.findOneAndUpdate(
       { email: session.user.email },
-      { lastActive: new Date() },
-      { new: true }
+      updateData,
+      { new: true, upsert: false }
     );
     
     if (!user) {
@@ -66,14 +126,16 @@ export async function POST(request) {
     
     return NextResponse.json({
       success: true,
-      message: 'Last active timestamp updated',
-      lastActive: user.lastActive
+      message: 'Heartbeat received',
+      lastActive: user.lastActive,
+      serverTime: now.toISOString(),
+      isImmediate: heartbeatData.isImmediate || false
     });
     
   } catch (error) {
-    console.error('Error updating last active:', error);
+    console.error('Error processing heartbeat:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to update last active' },
+      { success: false, error: 'Failed to process heartbeat' },
       { status: 500 }
     );
   }

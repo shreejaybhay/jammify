@@ -67,6 +67,10 @@ const UserSchema = new mongoose.Schema({
   timestamps: true,
 });
 
+// Performance optimization: Index for online user queries
+UserSchema.index({ lastActive: -1 });
+UserSchema.index({ email: 1, lastActive: -1 });
+
 // Hash password before saving
 UserSchema.pre('save', async function () {
   if (!this.isModified('password')) return;
@@ -101,21 +105,70 @@ UserSchema.methods.updateLastActive = function () {
   return this.save();
 };
 
-// Static method to count online users (active within last 2 minutes)
+// Static method to count online users (active within last 4 minutes for better reliability)
 UserSchema.statics.countOnlineUsers = function () {
-  const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
+  const fourMinutesAgo = new Date(Date.now() - 4 * 60 * 1000);
   return this.countDocuments({
-    lastActive: { $gte: twoMinutesAgo }
+    lastActive: { $gte: fourMinutesAgo }
   });
 };
 
-// Static method to get online users list
+// Static method to get online users list with enhanced status
 UserSchema.statics.getOnlineUsers = function () {
-  const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
+  const fourMinutesAgo = new Date(Date.now() - 4 * 60 * 1000);
   return this.find(
-    { lastActive: { $gte: twoMinutesAgo } },
+    { lastActive: { $gte: fourMinutesAgo } },
     { name: 1, email: 1, image: 1, lastActive: 1 }
   ).sort({ lastActive: -1 });
+};
+
+// Static method to get detailed online status
+UserSchema.statics.getOnlineUsersWithStatus = function () {
+  const now = new Date();
+  const thirtySecondsAgo = new Date(now.getTime() - 30 * 1000);
+  const twoMinutesAgo = new Date(now.getTime() - 2 * 60 * 1000);
+  const fourMinutesAgo = new Date(now.getTime() - 4 * 60 * 1000);
+  
+  return this.aggregate([
+    {
+      $match: {
+        lastActive: { $gte: fourMinutesAgo }
+      }
+    },
+    {
+      $addFields: {
+        status: {
+          $switch: {
+            branches: [
+              { case: { $gte: ["$lastActive", thirtySecondsAgo] }, then: "active" },
+              { case: { $gte: ["$lastActive", twoMinutesAgo] }, then: "recent" },
+              { case: { $gte: ["$lastActive", fourMinutesAgo] }, then: "idle" }
+            ],
+            default: "offline"
+          }
+        },
+        secondsAgo: {
+          $divide: [
+            { $subtract: [now, "$lastActive"] },
+            1000
+          ]
+        }
+      }
+    },
+    {
+      $project: {
+        name: 1,
+        email: 1,
+        image: 1,
+        lastActive: 1,
+        status: 1,
+        secondsAgo: 1
+      }
+    },
+    {
+      $sort: { lastActive: -1 }
+    }
+  ]);
 };
 
 export default mongoose.models.User || mongoose.model('User', UserSchema);

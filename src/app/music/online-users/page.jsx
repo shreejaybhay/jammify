@@ -39,14 +39,20 @@ export default function OnlineUsersPage() {
     }
   };
 
-  const getActivityStatus = (lastActive) => {
+  const getActivityStatus = (user) => {
+    // Use server-provided status if available, otherwise calculate
+    if (user.status) {
+      return user.status;
+    }
+    
     const now = new Date();
-    const active = new Date(lastActive);
+    const active = new Date(user.lastActive);
     const diffInSeconds = Math.floor((now - active) / 1000);
 
     if (diffInSeconds < 30) return "active";
     if (diffInSeconds < 60) return "recent";
-    return "idle";
+    if (diffInSeconds < 240) return "idle"; // Extended to 4 minutes
+    return "offline";
   };
 
   const getStatusColor = (status) => {
@@ -121,7 +127,7 @@ export default function OnlineUsersPage() {
             Online Users
           </h1>
           <p className="text-muted-foreground">
-            Users active within the last 2 minutes
+            Users active within the last 4 minutes
           </p>
         </div>
         <Button
@@ -172,7 +178,7 @@ export default function OnlineUsersPage() {
               <div>
                 <p className="text-sm font-medium">Auto-refresh</p>
                 <p className="text-sm text-muted-foreground">
-                  Every 10 seconds
+                  Every 8 seconds
                 </p>
               </div>
             </div>
@@ -209,7 +215,7 @@ export default function OnlineUsersPage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {onlineUsers.map((user) => {
-                const status = getActivityStatus(user.lastActive);
+                const status = getActivityStatus(user);
                 const isCurrentUser = user.email === session?.user?.email;
 
                 return (
@@ -299,7 +305,7 @@ export default function OnlineUsersPage() {
               <div>
                 <p className="font-medium">Idle</p>
                 <p className="text-sm text-muted-foreground">
-                  1 - 2 minutes ago
+                  1 - 4 minutes ago
                 </p>
               </div>
             </div>
