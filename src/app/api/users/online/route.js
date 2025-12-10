@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth/next';
 import connectDB from '@/lib/mongodb';
 import User from '@/models/User';
 import mongoose from 'mongoose';
+import { checkAdminAccess } from '@/lib/admin-middleware';
 
 // Simple in-memory cache for online users (5-second cache)
 let onlineUsersCache = {
@@ -24,20 +25,35 @@ function setCachedOnlineUsers(data) {
   onlineUsersCache.timestamp = Date.now();
 }
 
-// GET - Get online users count and list with enhanced status and caching
+// GET - Get online users count and list with enhanced status and caching (ADMIN ONLY)
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
     const includeList = searchParams.get('includeList') === 'true';
     
-    // Check cache first for list requests
+    // If requesting user list, check admin access
     if (includeList) {
+      const { isAdmin, error } = await checkAdminAccess(request);
+      
+      if (!isAdmin) {
+        return NextResponse.json(
+          { 
+            success: false, 
+            error: error || 'Admin access required to view online users list',
+            code: 'ADMIN_ACCESS_REQUIRED'
+          },
+          { status: 403 }
+        );
+      }
+      
+      // Check cache first for admin requests
       const cached = getCachedOnlineUsers();
       if (cached) {
         return NextResponse.json({
           ...cached,
           cached: true,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          adminAccess: true
         });
       }
     }
@@ -53,10 +69,11 @@ export async function GET(request) {
       cached: false
     };
     
-    // Include enhanced user list with status information
+    // Include enhanced user list with status information (admin only)
     if (includeList) {
       const onlineUsers = await User.getOnlineUsersWithStatus();
       response.onlineUsers = onlineUsers;
+      response.adminAccess = true;
       
       // Cache the response for future requests
       setCachedOnlineUsers({

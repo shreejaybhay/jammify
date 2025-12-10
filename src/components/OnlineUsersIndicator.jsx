@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
-import { Users, Eye, EyeOff } from 'lucide-react';
+import { useAdminAccess } from '@/hooks/useAdminAccess';
+import { Users, Eye, EyeOff, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Popover,
@@ -12,8 +13,14 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 export function OnlineUsersIndicator({ showUsersList = false }) {
+  const { isAdmin, isLoading: adminLoading } = useAdminAccess();
   const { onlineCount, onlineUsers, isLoading, refreshOnlineUsers } = useOnlineStatus();
   const [showUsers, setShowUsers] = useState(false);
+
+  // Only show for admin users
+  if (!isAdmin || adminLoading) {
+    return null;
+  }
 
   const handleShowUsers = () => {
     if (!showUsers) {

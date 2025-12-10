@@ -63,6 +63,12 @@ const UserSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  // Admin role
+  role: {
+    type: String,
+    enum: ['user', 'admin'],
+    default: 'user',
+  },
 }, {
   timestamps: true,
 });
@@ -128,7 +134,7 @@ UserSchema.statics.getOnlineUsersWithStatus = function () {
   const thirtySecondsAgo = new Date(now.getTime() - 30 * 1000);
   const twoMinutesAgo = new Date(now.getTime() - 2 * 60 * 1000);
   const fourMinutesAgo = new Date(now.getTime() - 4 * 60 * 1000);
-  
+
   return this.aggregate([
     {
       $match: {

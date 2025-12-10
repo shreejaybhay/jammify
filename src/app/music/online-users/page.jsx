@@ -6,11 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Users, RefreshCw, Clock, User } from "lucide-react";
+import { Users, RefreshCw, Clock, User, Shield, AlertTriangle } from "lucide-react";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+import { useAdminAccess } from "@/hooks/useAdminAccess";
 
 export default function OnlineUsersPage() {
   const { data: session, status } = useSession();
+  const { isAdmin, isLoading: adminLoading, error: adminError } = useAdminAccess();
   const { onlineCount, onlineUsers, isLoading, refreshOnlineUsers } =
     useOnlineStatus();
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -89,13 +91,15 @@ export default function OnlineUsersPage() {
   }, [onlineUsers, onlineCount]);
 
   // Show loading while session is being determined
-  if (status === "loading") {
+  if (status === "loading" || adminLoading) {
     return (
       <div className="container mx-auto p-6">
         <Card>
           <CardContent className="flex items-center justify-center py-12">
             <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
-            <span className="ml-2 text-muted-foreground">Loading...</span>
+            <span className="ml-2 text-muted-foreground">
+              {status === "loading" ? "Loading..." : "Checking permissions..."}
+            </span>
           </CardContent>
         </Card>
       </div>
@@ -117,6 +121,37 @@ export default function OnlineUsersPage() {
     );
   }
 
+  // Show admin access required message
+  if (status === "authenticated" && !adminLoading && !isAdmin) {
+    return (
+      <div className="container mx-auto p-6">
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12 space-y-4">
+            <div className="flex items-center justify-center w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full">
+              <Shield className="h-8 w-8 text-red-600 dark:text-red-400" />
+            </div>
+            <div className="text-center space-y-2">
+              <h2 className="text-xl font-semibold text-foreground">Admin Access Required</h2>
+              <p className="text-muted-foreground max-w-md">
+                This page is restricted to administrators only. You need admin privileges to view online users.
+              </p>
+              {adminError && (
+                <div className="flex items-center justify-center gap-2 text-sm text-red-600 dark:text-red-400 mt-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  <span>{adminError}</span>
+                </div>
+              )}
+            </div>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <User className="h-4 w-4" />
+              <span>Signed in as: {session?.user?.email}</span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       {/* Header */}
@@ -125,6 +160,10 @@ export default function OnlineUsersPage() {
           <h1 className="text-3xl font-bold flex items-center gap-2">
             <Users className="h-8 w-8 text-green-500" />
             Online Users
+            <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+              <Shield className="h-3 w-3 mr-1" />
+              Admin View
+            </Badge>
           </h1>
           <p className="text-muted-foreground">
             Users active within the last 4 minutes
