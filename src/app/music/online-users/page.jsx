@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -17,6 +17,10 @@ export default function OnlineUsersPage() {
     useOnlineStatus();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(null);
+  
+  // Prevent unnecessary re-checks by memoizing admin status
+  const adminStatusChecked = useRef(false);
+  const currentUserEmail = useRef(null);
 
   const handleManualRefresh = async () => {
     setIsRefreshing(true);
@@ -89,6 +93,18 @@ export default function OnlineUsersPage() {
       setLastUpdated(new Date());
     }
   }, [onlineUsers, onlineCount]);
+
+  // Prevent unnecessary admin re-checks on tab switches
+  useEffect(() => {
+    if (session?.user?.email && currentUserEmail.current !== session.user.email) {
+      currentUserEmail.current = session.user.email;
+      adminStatusChecked.current = false;
+    }
+    
+    if (isAdmin && !adminLoading && !adminStatusChecked.current) {
+      adminStatusChecked.current = true;
+    }
+  }, [session?.user?.email, isAdmin, adminLoading]);
 
   // Show loading while session is being determined
   if (status === "loading" || adminLoading) {

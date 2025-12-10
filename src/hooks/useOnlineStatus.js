@@ -152,11 +152,20 @@ export function useOnlineStatus() {
         }
       }, fetchInterval);
 
-      // Simplified visibility change handling - just refresh data
+      // Optimized visibility change handling - only refresh if away for more than 30 seconds
+      let lastVisibilityChange = Date.now();
       const handleVisibilityChange = () => {
         if (!document.hidden && status === 'authenticated') {
-          // Just refresh the online users data when page becomes visible
-          setTimeout(() => fetchOnlineUsers(true), 500);
+          const now = Date.now();
+          const timeSinceLastChange = now - lastVisibilityChange;
+          
+          // Only refresh if page was hidden for more than 30 seconds
+          if (timeSinceLastChange > 30000) {
+            setTimeout(() => fetchOnlineUsers(true), 500);
+          }
+          lastVisibilityChange = now;
+        } else if (document.hidden) {
+          lastVisibilityChange = Date.now();
         }
       };
 
