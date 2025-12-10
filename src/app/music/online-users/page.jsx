@@ -10,7 +10,6 @@ import { Users, RefreshCw, Clock, User, Shield, AlertTriangle, BarChart3 } from 
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { useAdminAccess } from "@/hooks/useAdminAccess";
 import DailyUsersChart from "@/components/analytics/DailyUsersChart";
-import UserActivityTracker from "@/components/analytics/UserActivityTracker";
 
 export default function OnlineUsersPage() {
   const { data: session, status } = useSession();
@@ -172,9 +171,6 @@ export default function OnlineUsersPage() {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      {/* Track user activity for analytics */}
-      <UserActivityTracker />
-      
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="space-y-1">
