@@ -250,46 +250,58 @@ export default function DailyUsersChart({
           <ResponsiveContainer width="100%" height="100%">
             {chartType === 'area' ? (
               <AreaChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                <CartesianGrid 
+                  strokeDasharray="3 3" 
+                  stroke="#374151" 
+                  strokeOpacity={0.4}
+                />
                 <XAxis 
                   dataKey="formattedDate" 
-                  className="text-xs fill-muted-foreground"
-                  tick={{ fontSize: 12 }}
+                  tick={{ fontSize: 11, fill: "#9CA3AF" }}
+                  axisLine={{ stroke: "#4B5563" }}
+                  tickLine={{ stroke: "#4B5563" }}
                 />
                 <YAxis 
-                  className="text-xs fill-muted-foreground"
-                  tick={{ fontSize: 12 }}
+                  tick={{ fontSize: 11, fill: "#9CA3AF" }}
+                  axisLine={{ stroke: "#4B5563" }}
+                  tickLine={{ stroke: "#4B5563" }}
                 />
                 <Tooltip content={<CustomTooltip />} />
                 <Area
                   type="monotone"
                   dataKey="users"
-                  stroke="hsl(var(--primary))"
-                  fill="hsl(var(--primary))"
-                  fillOpacity={0.2}
+                  stroke="#60A5FA"
+                  fill="#60A5FA"
+                  fillOpacity={0.15}
                   strokeWidth={2}
                 />
               </AreaChart>
             ) : (
               <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                <CartesianGrid 
+                  strokeDasharray="3 3" 
+                  stroke="#374151" 
+                  strokeOpacity={0.4}
+                />
                 <XAxis 
                   dataKey="formattedDate" 
-                  className="text-xs fill-muted-foreground"
-                  tick={{ fontSize: 12 }}
+                  tick={{ fontSize: 11, fill: "#9CA3AF" }}
+                  axisLine={{ stroke: "#4B5563" }}
+                  tickLine={{ stroke: "#4B5563" }}
                 />
                 <YAxis 
-                  className="text-xs fill-muted-foreground"
-                  tick={{ fontSize: 12 }}
+                  tick={{ fontSize: 11, fill: "#9CA3AF" }}
+                  axisLine={{ stroke: "#4B5563" }}
+                  tickLine={{ stroke: "#4B5563" }}
                 />
                 <Tooltip content={<CustomTooltip />} />
                 <Line
                   type="monotone"
                   dataKey="users"
-                  stroke="hsl(var(--primary))"
+                  stroke="#60A5FA"
                   strokeWidth={2}
-                  dot={{ fill: "hsl(var(--primary))", strokeWidth: 2, r: 4 }}
-                  activeDot={{ r: 6, stroke: "hsl(var(--primary))", strokeWidth: 2 }}
+                  dot={{ fill: "#60A5FA", strokeWidth: 0, r: 3 }}
+                  activeDot={{ r: 5, stroke: "#60A5FA", strokeWidth: 2, fill: "#1F2937" }}
                 />
               </LineChart>
             )}
