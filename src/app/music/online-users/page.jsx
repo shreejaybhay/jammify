@@ -6,9 +6,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Users, RefreshCw, Clock, User, Shield, AlertTriangle } from "lucide-react";
+import { Users, RefreshCw, Clock, User, Shield, AlertTriangle, BarChart3 } from "lucide-react";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { useAdminAccess } from "@/hooks/useAdminAccess";
+import DailyUsersChart from "@/components/analytics/DailyUsersChart";
+import UserActivityTracker from "@/components/analytics/UserActivityTracker";
 
 export default function OnlineUsersPage() {
   const { data: session, status } = useSession();
@@ -170,6 +172,9 @@ export default function OnlineUsersPage() {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
+      {/* Track user activity for analytics */}
+      <UserActivityTracker />
+      
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="space-y-1">
@@ -239,6 +244,34 @@ export default function OnlineUsersPage() {
             </div>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Daily Active Users Analytics */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <BarChart3 className="h-5 w-5 text-primary" />
+          <h2 className="text-xl font-semibold">Daily Active Users Analytics</h2>
+          <Badge variant="outline" className="text-xs">
+            Admin Only
+          </Badge>
+        </div>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* 30-day overview */}
+          <DailyUsersChart 
+            days={30}
+            chartType="area"
+            showSummary={true}
+            autoRefresh={false}
+          />
+          
+          {/* 7-day detailed view */}
+          <DailyUsersChart 
+            days={7}
+            chartType="line"
+            showSummary={false}
+          />
+        </div>
       </div>
 
       {/* Online Users List */}
