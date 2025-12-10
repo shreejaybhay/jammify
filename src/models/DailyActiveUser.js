@@ -28,45 +28,55 @@ const dailyActiveUserSchema = new mongoose.Schema({
 // Compound index for efficient queries
 dailyActiveUserSchema.index({ date: 1, 'users.email': 1 });
 
+// Unique index to prevent duplicate date documents
+dailyActiveUserSchema.index({ date: 1 }, { unique: true });
+
 // Static method to record user activity
 dailyActiveUserSchema.statics.recordUserActivity = async function(userEmail, userName = null) {
   const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
   
   try {
-    // Use atomic operation to prevent duplicates
-    const result = await this.findOneAndUpdate(
-      { 
-        date: today,
-        'users.email': { $ne: userEmail } // Only update if email doesn't exist
-      },
-      {
-        $push: {
-          users: {
-            email: userEmail,
-            name: userName,
-            firstSeenAt: new Date()
-          }
-        },
-        $inc: { totalUsers: 1 } // Increment count atomically
-      },
-      { 
-        upsert: true, 
-        new: true,
-        setDefaultsOnInsert: true
-      }
-    );
+    // Step 1: Check if user already exists for today
+    const existingRecord = await this.findOne({
+      date: today,
+      'users.email': userEmail
+    });
     
-    // If result is null, it means the document exists but user already recorded
-    if (!result) {
+    if (existingRecord) {
       return { success: true, message: 'User already recorded for today', isNew: false };
     }
+    
+    // Step 2: Find or create today's document
+    let todayRecord = await this.findOne({ date: today });
+    
+    if (!todayRecord) {
+      // Create new document for today
+      todayRecord = new this({
+        date: today,
+        users: [],
+        totalUsers: 0
+      });
+    }
+    
+    // Step 3: Add user if not already present (double-check)
+    const userExists = todayRecord.users.some(user => user.email === userEmail);
+    
+    if (userExists) {
+      return { success: true, message: 'User already recorded for today', isNew: false };
+    }
+    
+    // Step 4: Add user and save
+    todayRecord.users.push({
+      email: userEmail,
+      name: userName,
+      firstSeenAt: new Date()
+    });
+    todayRecord.totalUsers = todayRecord.users.length;
+    
+    await todayRecord.save();
     
     return { success: true, message: 'User activity recorded', isNew: true };
   } catch (error) {
-    // Handle duplicate key error (if document is created simultaneously)
-    if (error.code === 11000) {
-      return { success: true, message: 'User already recorded for today', isNew: false };
-    }
     console.error('Error recording user activity:', error);
     throw error;
   }
