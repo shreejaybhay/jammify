@@ -135,26 +135,8 @@ export function useOnlineStatus() {
     if (status === 'authenticated' && session?.user?.email) {
       console.log('Setting up enhanced online tracking for:', session.user.email);
       
-      // Initialize tracking with immediate heartbeat
-      const initializeTracking = async () => {
-        const success = await sendHeartbeat(true);
-        if (success) {
-          // Fetch online users after successful heartbeat
-          setTimeout(() => fetchOnlineUsers(true), 200);
-        }
-      };
-      
-      initializeTracking();
-
-      // Optimized heartbeat system - adaptive frequency
-      heartbeatIntervalRef.current = setInterval(async () => {
-        const timeSinceActivity = Date.now() - lastActivityRef.current;
-        
-        // Only send heartbeat if user was active in last 3 minutes
-        if (timeSinceActivity < 3 * 60 * 1000) {
-          await sendHeartbeat();
-        }
-      }, 20000); // Reduced to 20s for better performance
+      // Initial fetch only - GlobalOnlineTracker handles heartbeats
+      fetchOnlineUsers(true);
 
       // Optimized fetch - only when on online users page or when needed
       const isOnOnlineUsersPage = window.location.pathname.includes('/online-users');
@@ -170,94 +152,24 @@ export function useOnlineStatus() {
         }
       }, fetchInterval);
 
-      // Enhanced visibility change handling
-      const handleVisibilityChange = async () => {
+      // Simplified visibility change handling - just refresh data
+      const handleVisibilityChange = () => {
         if (!document.hidden && status === 'authenticated') {
-          trackActivity();
-          const success = await sendHeartbeat(true);
-          if (success) {
-            setTimeout(() => fetchOnlineUsers(true), 200);
-          }
+          // Just refresh the online users data when page becomes visible
+          setTimeout(() => fetchOnlineUsers(true), 500);
         }
       };
 
-      // Enhanced activity tracking with immediate heartbeat for critical actions
-      let activityTimeout;
-      let lastHeartbeat = 0;
-      
-      const handleUserActivity = async (event) => {
-        if (status !== 'authenticated') return;
-        
-        trackActivity();
-        
-        // Clear existing timeout
-        if (activityTimeout) clearTimeout(activityTimeout);
-        
-        // For critical events, send immediate heartbeat
-        const criticalEvents = ['mousedown', 'keydown', 'touchstart'];
-        const now = Date.now();
-        
-        if (criticalEvents.includes(event.type) && (now - lastHeartbeat) > 5000) {
-          lastHeartbeat = now;
-          sendHeartbeat();
-        } else {
-          // For other events, debounce the heartbeat
-          activityTimeout = setTimeout(() => {
-            if ((Date.now() - lastHeartbeat) > 10000) {
-              sendHeartbeat();
-              lastHeartbeat = Date.now();
-            }
-          }, 2000);
-        }
-      };
-
-      // Enhanced event listeners for better activity detection
-      const events = [
-        'mousedown', 'mousemove', 'keydown', 'keypress', 
-        'scroll', 'touchstart', 'touchmove', 'click',
-        'focus', 'blur'
-      ];
-
-      // Add event listeners
+      // Add minimal event listeners - GlobalOnlineTracker handles heartbeats
       document.addEventListener('visibilitychange', handleVisibilityChange);
-      events.forEach(event => {
-        document.addEventListener(event, handleUserActivity, { passive: true });
-      });
-
-      // PWA-specific handling
-      if ('serviceWorker' in navigator) {
-        // Send heartbeat when service worker becomes active
-        navigator.serviceWorker.addEventListener('message', (event) => {
-          if (event.data && event.data.type === 'BACKGROUND_SYNC') {
-            sendHeartbeat();
-          }
-        });
-      }
-
-      // Page unload handling - mark user as going offline
-      const handleBeforeUnload = () => {
-        // Use sendBeacon for reliable delivery during page unload
-        if (navigator.sendBeacon) {
-          navigator.sendBeacon('/api/users/online/offline', JSON.stringify({
-            email: session.user.email
-          }));
-        }
-      };
-
-      window.addEventListener('beforeunload', handleBeforeUnload);
 
       return () => {
         // Cleanup
         if (activeIntervalRef.current) clearInterval(activeIntervalRef.current);
         if (fetchIntervalRef.current) clearInterval(fetchIntervalRef.current);
         if (heartbeatIntervalRef.current) clearInterval(heartbeatIntervalRef.current);
-        if (activityTimeout) clearTimeout(activityTimeout);
         
         document.removeEventListener('visibilitychange', handleVisibilityChange);
-        events.forEach(event => {
-          document.removeEventListener(event, handleUserActivity);
-        });
-        window.removeEventListener('beforeunload', handleBeforeUnload);
       };
     }
   }, [status, session?.user?.email, sendHeartbeat, trackActivity, fetchOnlineUsers]);

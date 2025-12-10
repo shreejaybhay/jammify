@@ -5,6 +5,7 @@ import { SessionProvider } from "next-auth/react";
 import AuthProvider from "@/components/auth-provider";
 import { MusicPlayerProvider } from "@/contexts/music-player-context";
 import { MusicPlayerWrapper } from "@/components/music-player-wrapper";
+import { GlobalOnlineTracker } from "@/components/global-online-tracker";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -77,6 +78,7 @@ export default function RootLayout({ children }) {
             disableTransitionOnChange
           >
             <MusicPlayerProvider>
+              <GlobalOnlineTracker />
               {children}
               <MusicPlayerWrapper />
             </MusicPlayerProvider>
