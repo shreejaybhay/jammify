@@ -58,6 +58,11 @@ const UserSchema = new mongoose.Schema({
   otpExpires: {
     type: Date,
   },
+  // Online status tracking
+  lastActive: {
+    type: Date,
+    default: Date.now,
+  },
 }, {
   timestamps: true,
 });
@@ -88,6 +93,29 @@ UserSchema.methods.generateOTP = function() {
 // Verify OTP
 UserSchema.methods.verifyOTP = function(otp) {
   return this.otpCode === otp && this.otpExpires > new Date();
+};
+
+// Update user's last active timestamp
+UserSchema.methods.updateLastActive = function() {
+  this.lastActive = new Date();
+  return this.save();
+};
+
+// Static method to count online users (active within last 2 minutes)
+UserSchema.statics.countOnlineUsers = function() {
+  const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
+  return this.countDocuments({
+    lastActive: { $gte: twoMinutesAgo }
+  });
+};
+
+// Static method to get online users list
+UserSchema.statics.getOnlineUsers = function() {
+  const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
+  return this.find(
+    { lastActive: { $gte: twoMinutesAgo } },
+    { name: 1, email: 1, image: 1, lastActive: 1 }
+  ).sort({ lastActive: -1 });
 };
 
 export default mongoose.models.User || mongoose.model('User', UserSchema);
