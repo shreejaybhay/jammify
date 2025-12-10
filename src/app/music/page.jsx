@@ -22,6 +22,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Play, Heart, List, Search } from "lucide-react";
 import { useLikedPlaylists } from "@/hooks/useLikedPlaylists";
+import UserActivityTracker from "@/components/analytics/UserActivityTracker";
 
 export default function MusicPage() {
   const router = useRouter();
@@ -236,6 +237,8 @@ export default function MusicPage() {
 
   return (
     <SidebarProvider>
+      {/* Track user activity for analytics */}
+      <UserActivityTracker />
       <AppSidebar />
       <SidebarInset>
         <header className="sticky top-0 z-50 flex h-16 shrink-0 items-center gap-2 border-b bg-background transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
