@@ -32,7 +32,7 @@ function setCachedDailyStats(days, format, data) {
 export async function GET(request) {
   try {
     const session = await getServerSession();
-    
+
     if (!session?.user?.email) {
       return NextResponse.json(
         { success: false, error: 'Authentication required' },
@@ -60,10 +60,10 @@ export async function GET(request) {
     
     // Fetch daily stats
     const stats = await DailyActiveUser.getDailyStats(days);
-    
+
     // Fill in missing dates with 0 users
     const filledStats = fillMissingDates(stats, days);
-    
+
     // Format data based on request
     let responseData;
     if (format === 'table') {
@@ -82,7 +82,7 @@ export async function GET(request) {
         summary: calculateSummary(filledStats)
       };
     }
-    
+
     // Cache the result
     setCachedDailyStats(days, format, responseData);
     
@@ -92,7 +92,7 @@ export async function GET(request) {
       cached: false,
       timestamp: new Date().toISOString()
     });
-    
+
   } catch (error) {
     console.error('Error fetching daily user stats:', error);
     return NextResponse.json(
@@ -106,19 +106,19 @@ export async function GET(request) {
 function fillMissingDates(stats, days) {
   const filledStats = [];
   const endDate = new Date();
-  
+
   for (let i = days - 1; i >= 0; i--) {
     const currentDate = new Date();
     currentDate.setDate(endDate.getDate() - i);
     const dateStr = currentDate.toISOString().split('T')[0];
-    
+
     const existingStat = stats.find(stat => stat.date === dateStr);
     filledStats.push({
       date: dateStr,
       totalUsers: existingStat ? existingStat.totalUsers : 0
     });
   }
-  
+
   return filledStats;
 }
 
@@ -129,19 +129,19 @@ function calculateSummary(stats) {
   const averageUsers = totalDays > 0 ? Math.round(totalUsers / totalDays * 100) / 100 : 0;
   const maxUsers = Math.max(...stats.map(stat => stat.totalUsers));
   const minUsers = Math.min(...stats.map(stat => stat.totalUsers));
-  
+
   // Calculate trend (last 7 days vs previous 7 days)
   const last7Days = stats.slice(-7);
   const previous7Days = stats.slice(-14, -7);
-  
-  const last7Average = last7Days.length > 0 ? 
+
+  const last7Average = last7Days.length > 0 ?
     last7Days.reduce((sum, stat) => sum + stat.totalUsers, 0) / last7Days.length : 0;
-  const previous7Average = previous7Days.length > 0 ? 
+  const previous7Average = previous7Days.length > 0 ?
     previous7Days.reduce((sum, stat) => sum + stat.totalUsers, 0) / previous7Days.length : 0;
-  
-  const trendPercentage = previous7Average > 0 ? 
+
+  const trendPercentage = previous7Average > 0 ?
     Math.round(((last7Average - previous7Average) / previous7Average) * 100 * 100) / 100 : 0;
-  
+
   return {
     totalDays,
     totalUsers,
@@ -157,8 +157,8 @@ function calculateSummary(stats) {
 // Helper function to format date for display
 function formatDateForDisplay(dateStr) {
   const date = new Date(dateStr);
-  return date.toLocaleDateString('en-US', { 
-    month: 'short', 
-    day: 'numeric' 
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric'
   });
 }
