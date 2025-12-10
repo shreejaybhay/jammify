@@ -33,27 +33,21 @@ dailyActiveUserSchema.statics.recordUserActivity = async function(userEmail, use
   const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
   
   try {
-    // Check if user already recorded for today
-    const existingRecord = await this.findOne({
-      date: today,
-      'users.email': userEmail
-    });
-    
-    if (existingRecord) {
-      return { success: true, message: 'User already recorded for today', isNew: false };
-    }
-    
-    // Add user to today's record or create new record
+    // Use atomic operation to prevent duplicates
     const result = await this.findOneAndUpdate(
-      { date: today },
+      { 
+        date: today,
+        'users.email': { $ne: userEmail } // Only update if email doesn't exist
+      },
       {
-        $addToSet: {
+        $push: {
           users: {
             email: userEmail,
             name: userName,
             firstSeenAt: new Date()
           }
-        }
+        },
+        $inc: { totalUsers: 1 } // Increment count atomically
       },
       { 
         upsert: true, 
@@ -62,14 +56,17 @@ dailyActiveUserSchema.statics.recordUserActivity = async function(userEmail, use
       }
     );
     
-    // Update total count
-    await this.findOneAndUpdate(
-      { date: today },
-      { totalUsers: result.users.length }
-    );
+    // If result is null, it means the document exists but user already recorded
+    if (!result) {
+      return { success: true, message: 'User already recorded for today', isNew: false };
+    }
     
     return { success: true, message: 'User activity recorded', isNew: true };
   } catch (error) {
+    // Handle duplicate key error (if document is created simultaneously)
+    if (error.code === 11000) {
+      return { success: true, message: 'User already recorded for today', isNew: false };
+    }
     console.error('Error recording user activity:', error);
     throw error;
   }
