@@ -45,6 +45,10 @@ const authOptions = {
             return null;
           }
 
+          // Update lastActive on successful login
+          user.lastActive = new Date();
+          await user.save();
+
           return {
             id: user._id.toString(),
             email: user.email,
@@ -77,13 +81,14 @@ const authOptions = {
             if (account.provider === 'google' && !existingUser.googleId) {
               existingUser.googleId = account.providerAccountId;
               existingUser.isVerified = true;
-              await existingUser.save();
             }
             if (account.provider === 'github' && !existingUser.githubId) {
               existingUser.githubId = account.providerAccountId;
               existingUser.isVerified = true;
-              await existingUser.save();
             }
+            // Update lastActive on every sign-in
+            existingUser.lastActive = new Date();
+            await existingUser.save();
             // Set the user ID for OAuth users
             user.id = existingUser._id.toString();
             console.log('Set user.id to:', user.id);
@@ -159,4 +164,4 @@ const authOptions = {
 
 const handler = NextAuth(authOptions);
 
-export { handler as GET, handler as POST };
+export { handler as GET, handler as POST, authOptions };

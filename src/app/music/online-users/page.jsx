@@ -7,39 +7,20 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Users, RefreshCw, Clock, User } from "lucide-react";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 
 export default function OnlineUsersPage() {
   const { data: session, status } = useSession();
-  const [onlineUsers, setOnlineUsers] = useState([]);
-  const [onlineCount, setOnlineCount] = useState(0);
-  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const { onlineCount, onlineUsers, isLoading, refreshOnlineUsers } =
+    useOnlineStatus();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(null);
 
-  const fetchOnlineUsers = async (isManualRefresh = false) => {
-    try {
-      if (isManualRefresh) {
-        setIsRefreshing(true);
-      } else if (isInitialLoading) {
-        // Keep initial loading state
-      } else {
-        // Silent refresh for auto-updates
-      }
-
-      const response = await fetch("/api/users/online?includeList=true");
-      const data = await response.json();
-
-      if (data.success) {
-        setOnlineUsers(data.onlineUsers || []);
-        setOnlineCount(data.onlineCount);
-        setLastUpdated(new Date());
-      }
-    } catch (error) {
-      console.error("Failed to fetch online users:", error);
-    } finally {
-      setIsInitialLoading(false);
-      setIsRefreshing(false);
-    }
+  const handleManualRefresh = async () => {
+    setIsRefreshing(true);
+    setLastUpdated(new Date());
+    await refreshOnlineUsers();
+    setIsRefreshing(false);
   };
 
   const formatLastActive = (lastActive) => {
@@ -94,17 +75,12 @@ export default function OnlineUsersPage() {
     }
   };
 
+  // Update lastUpdated when onlineUsers changes
   useEffect(() => {
-    // Only fetch if we have a session
-    if (status === "authenticated") {
-      fetchOnlineUsers();
-
-      // Auto-refresh every 10 seconds
-      const interval = setInterval(fetchOnlineUsers, 10000);
-
-      return () => clearInterval(interval);
+    if (onlineUsers.length > 0 || onlineCount >= 0) {
+      setLastUpdated(new Date());
     }
-  }, [status]);
+  }, [onlineUsers, onlineCount]);
 
   // Show loading while session is being determined
   if (status === "loading") {
@@ -149,7 +125,7 @@ export default function OnlineUsersPage() {
           </p>
         </div>
         <Button
-          onClick={() => fetchOnlineUsers(true)}
+          onClick={handleManualRefresh}
           disabled={isRefreshing}
           variant="outline"
           size="sm"
@@ -213,7 +189,7 @@ export default function OnlineUsersPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {isInitialLoading ? (
+          {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
               <span className="ml-2 text-muted-foreground">

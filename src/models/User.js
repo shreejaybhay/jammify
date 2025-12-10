@@ -14,7 +14,7 @@ const UserSchema = new mongoose.Schema({
   },
   password: {
     type: String,
-    required: function() {
+    required: function () {
       return !this.googleId && !this.githubId;
     },
   },
@@ -68,22 +68,22 @@ const UserSchema = new mongoose.Schema({
 });
 
 // Hash password before saving
-UserSchema.pre('save', async function() {
+UserSchema.pre('save', async function () {
   if (!this.isModified('password')) return;
-  
+
   if (this.password) {
     this.password = await bcrypt.hash(this.password, 12);
   }
 });
 
 // Compare password method
-UserSchema.methods.comparePassword = async function(candidatePassword) {
+UserSchema.methods.comparePassword = async function (candidatePassword) {
   if (!this.password) return false;
   return bcrypt.compare(candidatePassword, this.password);
 };
 
 // Generate OTP
-UserSchema.methods.generateOTP = function() {
+UserSchema.methods.generateOTP = function () {
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
   this.otpCode = otp;
   this.otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
@@ -91,18 +91,18 @@ UserSchema.methods.generateOTP = function() {
 };
 
 // Verify OTP
-UserSchema.methods.verifyOTP = function(otp) {
+UserSchema.methods.verifyOTP = function (otp) {
   return this.otpCode === otp && this.otpExpires > new Date();
 };
 
 // Update user's last active timestamp
-UserSchema.methods.updateLastActive = function() {
+UserSchema.methods.updateLastActive = function () {
   this.lastActive = new Date();
   return this.save();
 };
 
 // Static method to count online users (active within last 2 minutes)
-UserSchema.statics.countOnlineUsers = function() {
+UserSchema.statics.countOnlineUsers = function () {
   const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
   return this.countDocuments({
     lastActive: { $gte: twoMinutesAgo }
@@ -110,7 +110,7 @@ UserSchema.statics.countOnlineUsers = function() {
 };
 
 // Static method to get online users list
-UserSchema.statics.getOnlineUsers = function() {
+UserSchema.statics.getOnlineUsers = function () {
   const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
   return this.find(
     { lastActive: { $gte: twoMinutesAgo } },
