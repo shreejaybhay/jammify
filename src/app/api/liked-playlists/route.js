@@ -1,13 +1,12 @@
 import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import connectDB from '@/lib/mongodb';
 import LikedPlaylist from '@/models/LikedPlaylist';
-import mongoose from 'mongoose';
 
-// GET - Fetch all liked playlists for a user
+// GET - Get all liked playlists for the authenticated user
 export async function GET(request) {
   try {
-    await connectDB();
-    
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
     
@@ -18,20 +17,24 @@ export async function GET(request) {
       );
     }
 
-    // Validate and convert userId to ObjectId
-    if (!mongoose.Types.ObjectId.isValid(userId)) {
+    // Verify the user is authenticated and requesting their own data
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id || session.user.id !== userId) {
       return NextResponse.json(
-        { success: false, error: 'Invalid user ID format' },
-        { status: 400 }
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
       );
     }
+
+    await connectDB();
     
-    const likedPlaylists = await LikedPlaylist.findByUser(new mongoose.Types.ObjectId(userId));
+    const likedPlaylists = await LikedPlaylist.find({ userId })
+      .sort({ likedAt: -1 }) // Most recent first
+      .lean();
     
     return NextResponse.json({
       success: true,
-      data: likedPlaylists,
-      count: likedPlaylists.length
+      data: likedPlaylists
     });
     
   } catch (error) {
@@ -46,10 +49,16 @@ export async function GET(request) {
 // POST - Toggle like/unlike a playlist
 export async function POST(request) {
   try {
-    await connectDB();
+    const session = await getServerSession(authOptions);
     
-    const body = await request.json();
-    const { userId, playlistData } = body;
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { success: false, error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
+    const { userId, playlistData } = await request.json();
     
     if (!userId || !playlistData) {
       return NextResponse.json(
@@ -58,32 +67,58 @@ export async function POST(request) {
       );
     }
 
-    // Validate and convert userId to ObjectId
-    if (!mongoose.Types.ObjectId.isValid(userId)) {
+    // Verify the user is authenticated and acting on their own behalf
+    if (session.user.id !== userId) {
       return NextResponse.json(
-        { success: false, error: 'Invalid user ID format' },
-        { status: 400 }
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
       );
     }
+
+    await connectDB();
     
-    const result = await LikedPlaylist.toggleLike(new mongoose.Types.ObjectId(userId), playlistData);
-    
-    return NextResponse.json({
-      success: true,
-      ...result
+    // Check if playlist is already liked
+    const existingLike = await LikedPlaylist.findOne({
+      userId,
+      playlistId: playlistData.id
     });
+
+    if (existingLike) {
+      // Unlike the playlist
+      await LikedPlaylist.deleteOne({
+        userId,
+        playlistId: playlistData.id
+      });
+      
+      return NextResponse.json({
+        success: true,
+        liked: false,
+        message: 'Playlist removed from favorites'
+      });
+    } else {
+      // Like the playlist
+      const likedPlaylist = new LikedPlaylist({
+        userId,
+        playlistId: playlistData.id,
+        playlistName: playlistData.name || playlistData.title,
+        description: playlistData.description || '',
+        image: playlistData.image || [],
+        songCount: playlistData.songCount || playlistData.song_count || 0,
+        likedAt: new Date()
+      });
+      
+      await likedPlaylist.save();
+      
+      return NextResponse.json({
+        success: true,
+        liked: true,
+        message: 'Playlist added to favorites',
+        data: likedPlaylist
+      });
+    }
     
   } catch (error) {
     console.error('Error toggling playlist like:', error);
-    
-    // Handle duplicate key error (trying to like the same playlist twice)
-    if (error.code === 11000) {
-      return NextResponse.json(
-        { success: false, error: 'Playlist already liked' },
-        { status: 409 }
-      );
-    }
-    
     return NextResponse.json(
       { success: false, error: 'Failed to toggle playlist like' },
       { status: 500 }

@@ -2,7 +2,7 @@
 /* eslint-disable react/no-unescaped-entities */
 "use client";
 
-import { useState, useEffect, useCallback, useRef, Suspense } from "react";
+import React, { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Input } from "@/components/ui/input";
@@ -34,6 +34,7 @@ import {
 import { useMusicPlayer } from "@/contexts/music-player-context";
 import { useLikedSongs } from "@/hooks/useLikedSongs";
 import { AddToPlaylistDialog } from "@/components/playlists/AddToPlaylistDialog";
+import { PlaylistCover } from "@/components/ui/playlist-cover";
 
 function SearchPageContent() {
   const searchParams = useSearchParams();
@@ -43,13 +44,20 @@ function SearchPageContent() {
 
   const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [searchResults, setSearchResults] = useState(null);
+  const [lyricsResults, setLyricsResults] = useState(null);
+  const [publicPlaylists, setPublicPlaylists] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [lyricsLoading, setLyricsLoading] = useState(false);
+  const [publicPlaylistsLoading, setPublicPlaylistsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
   const [addToPlaylistDialogOpen, setAddToPlaylistDialogOpen] = useState(false);
   const [selectedSong, setSelectedSong] = useState(null);
 
   // Ref for the search input to enable auto-focus
   const searchInputRef = useRef(null);
+
+  // Ref to track current search ID to prevent stale results
+  const currentSearchId = useRef(0);
 
   const { playSong, currentSong, isPlaying } = useMusicPlayer();
   const { toggleLike, isLiked } = useLikedSongs(session?.user?.id);
@@ -63,19 +71,22 @@ function SearchPageContent() {
     };
   }, []);
 
-  const performSearch = async (query) => {
+  const performSearch = async (query, searchId) => {
     if (!query.trim()) {
       setSearchResults(null);
-      setLoading(false);
       return;
     }
-
-    setLoading(true);
     try {
       const response = await fetch(`https://jiosaavn-api-blush.vercel.app/api/search?query=${encodeURIComponent(query)}`);
       const data = await response.json();
 
       console.log('Search API Response:', data);
+
+      // Check if this is still the current search
+      if (searchId !== currentSearchId.current) {
+        console.log('Ignoring stale search result');
+        return;
+      }
 
       if (data.success) {
         // Transform the API response to match our expected structure
@@ -181,15 +192,113 @@ function SearchPageContent() {
     } catch (error) {
       console.error('Search error:', error);
       // Don't clear results on error, keep previous results to prevent layout shift
-    } finally {
-      setLoading(false);
     }
   };
 
-  const debouncedSearch = useCallback(
-    debounce((query) => performSearch(query), 500),
-    []
-  );
+  // Lyrics search function
+  const performLyricsSearch = async (query, searchId) => {
+    if (!query.trim()) {
+      setLyricsResults(null);
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/search-lyrics?q=${encodeURIComponent(query)}`);
+      const data = await response.json();
+
+      // Check if this is still the current search
+      if (searchId !== currentSearchId.current) {
+        console.log('Ignoring stale lyrics search result');
+        return;
+      }
+
+      if (data.success) {
+        setLyricsResults(data.data);
+      } else {
+        console.error('Lyrics search failed:', data.error);
+        setLyricsResults([]);
+      }
+    } catch (error) {
+      console.error('Lyrics search error:', error);
+      setLyricsResults([]);
+    }
+  };
+
+  // Create a stable debounced search function
+  const debouncedSearchRef = useRef();
+
+  if (!debouncedSearchRef.current) {
+    debouncedSearchRef.current = debounce(async (query) => {
+      if (!query.trim()) {
+        setSearchResults(null);
+        setLyricsResults(null);
+        setPublicPlaylists(null);
+        setLoading(false);
+        setLyricsLoading(false);
+        setPublicPlaylistsLoading(false);
+        return;
+      }
+
+      // Increment search ID to track this search
+      const searchId = ++currentSearchId.current;
+
+      // Set loading states and clear previous results immediately
+      setLoading(true);
+      setLyricsLoading(true);
+      setPublicPlaylistsLoading(true);
+      setSearchResults(null);
+      setLyricsResults(null);
+      setPublicPlaylists(null);
+
+      try {
+        // Perform all searches in parallel and wait for all to complete
+        await Promise.allSettled([
+          performSearch(query, searchId),
+          performLyricsSearch(query, searchId),
+          performPublicPlaylistsSearch(query, searchId)
+        ]);
+      } catch (error) {
+        console.error('Search error:', error);
+      } finally {
+        // Only set loading to false after ALL searches are complete
+        // Check if this is still the current search before updating loading state
+        if (searchId === currentSearchId.current) {
+          setLoading(false);
+          setLyricsLoading(false);
+          setPublicPlaylistsLoading(false);
+        }
+      }
+    }, 600);
+  }
+
+  // Public playlists search function
+  const performPublicPlaylistsSearch = async (query, searchId) => {
+    if (!query.trim()) {
+      setPublicPlaylists(null);
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/search-public-playlists?q=${encodeURIComponent(query)}`);
+      const data = await response.json();
+
+      // Check if this is still the current search
+      if (searchId !== currentSearchId.current) {
+        console.log('Ignoring stale public playlists search result');
+        return;
+      }
+
+      if (data.success) {
+        setPublicPlaylists(data.data);
+      } else {
+        console.error('Public playlists search failed:', data.error);
+        setPublicPlaylists([]);
+      }
+    } catch (error) {
+      console.error('Public playlists search error:', error);
+      setPublicPlaylists([]);
+    }
+  };
 
   // Auto-focus the search input when the page loads
   useEffect(() => {
@@ -203,15 +312,96 @@ function SearchPageContent() {
     return () => clearTimeout(timer);
   }, []);
 
+  // Handle initial query from URL parameters
   useEffect(() => {
-    if (initialQuery) {
-      performSearch(initialQuery);
+    if (initialQuery && initialQuery !== searchQuery) {
+      // Only set the search query, let the other useEffect handle the actual search
+      setSearchQuery(initialQuery);
     }
   }, [initialQuery]);
 
+  // Handle search query changes (both from user input and initial URL query)
   useEffect(() => {
-    debouncedSearch(searchQuery);
-  }, [searchQuery, debouncedSearch]);
+    if (searchQuery.trim()) {
+      debouncedSearchRef.current(searchQuery);
+    } else {
+      // Clear results when search query is empty
+      setSearchResults(null);
+      setLyricsResults(null);
+      setPublicPlaylists(null);
+      setLoading(false);
+      setLyricsLoading(false);
+      setPublicPlaylistsLoading(false);
+    }
+  }, [searchQuery]);
+
+  // Combine lyrics search results with regular search results
+  const combinedSearchResults = React.useMemo(() => {
+    if (!searchResults) return null;
+
+    // Start with regular search results
+    const combined = { ...searchResults };
+
+    // Ensure songs array exists
+    if (!combined.songs) {
+      combined.songs = { results: [] };
+    }
+    if (!combined.songs.results) {
+      combined.songs.results = [];
+    }
+
+    // Add songs from lyrics search that have JioSaavn matches
+    if (lyricsResults && Array.isArray(lyricsResults) && lyricsResults.length > 0) {
+      const lyricsBasedSongs = lyricsResults
+        .filter(result => {
+          // More robust filtering
+          return result &&
+            result.jiosaavn &&
+            result.jiosaavn.id &&
+            typeof result.jiosaavn.id === 'string' &&
+            result.jiosaavn.id.trim() !== '';
+        })
+        .map((result, index) => ({
+          ...result.jiosaavn,
+          // Add a flag to identify lyrics-based results
+          isLyricsMatch: true,
+          geniusData: result.genius,
+          // Add a unique identifier to prevent key conflicts
+          _lyricsIndex: index
+        }));
+
+      if (lyricsBasedSongs.length > 0) {
+        // Create a more robust deduplication using both ID and title
+        const existingSongs = new Map();
+        combined.songs.results.forEach(song => {
+          if (song && song.id) {
+            existingSongs.set(song.id, song);
+          }
+        });
+
+        // Filter out duplicates more carefully
+        const newSongs = lyricsBasedSongs.filter(song => {
+          if (!song || !song.id) return false;
+
+          // Check if we already have this song ID
+          if (existingSongs.has(song.id)) {
+            return false;
+          }
+
+          // Add to our tracking map
+          existingSongs.set(song.id, song);
+          return true;
+        });
+
+        // Add new songs to the beginning of the results
+        if (newSongs.length > 0) {
+          combined.songs.results = [...newSongs, ...combined.songs.results];
+        }
+      }
+    }
+
+    return combined;
+  }, [searchResults, lyricsResults]);
 
   const handlePlayClick = async (song, playlist = []) => {
     try {
@@ -630,7 +820,7 @@ function SearchPageContent() {
             </div>
           </div>
 
-          {searchResults && (
+          {combinedSearchResults && (
             <div className="px-4 sm:px-6 relative">
               {loading && (
                 <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-10 flex items-center justify-center rounded-lg">
@@ -639,7 +829,7 @@ function SearchPageContent() {
               )}
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <div className="overflow-x-auto scrollbar-hide mb-6">
-                  <TabsList className="grid w-full min-w-[400px] sm:max-w-lg grid-cols-5 h-10 sm:h-12">
+                  <TabsList className="grid w-full min-w-[400px] sm:max-w-2xl grid-cols-5 h-10 sm:h-12">
                     <TabsTrigger value="all" className="text-xs sm:text-sm">All</TabsTrigger>
                     <TabsTrigger value="songs" className="text-xs sm:text-sm">Songs</TabsTrigger>
                     <TabsTrigger value="albums" className="text-xs sm:text-sm">Albums</TabsTrigger>
@@ -651,11 +841,11 @@ function SearchPageContent() {
                 <TabsContent value="all" className="space-y-6 sm:space-y-8">
                   <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 sm:gap-8">
                     {/* Top Result */}
-                    {(searchResults.topQuery || (searchResults.songs?.results?.length > 0)) && (
+                    {(combinedSearchResults.topQuery || (combinedSearchResults.songs?.results?.length > 0)) && (
                       <div className="xl:col-span-1">
                         <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Top result</h2>
                         {(() => {
-                          const topResult = searchResults.topQuery || searchResults.songs.results[0];
+                          const topResult = combinedSearchResults.topQuery || combinedSearchResults.songs.results[0];
                           const resultType = topResult.type || 'song';
 
                           return (
@@ -715,7 +905,7 @@ function SearchPageContent() {
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   if (resultType === 'song') {
-                                    handlePlayClick(topResult, searchResults.songs?.results || [topResult]);
+                                    handlePlayClick(topResult, combinedSearchResults.songs?.results || [topResult]);
                                   }
                                 }}
                               >
@@ -728,18 +918,18 @@ function SearchPageContent() {
                     )}
 
                     {/* Songs Section */}
-                    {searchResults.songs?.results?.length > 0 && (
+                    {combinedSearchResults.songs?.results?.length > 0 && (
                       <div className="xl:col-span-1">
                         <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Songs</h2>
                         <div className="space-y-1">
-                          {searchResults.songs.results.slice(0, 4).map((song, index) => {
+                          {combinedSearchResults.songs.results.slice(0, 4).map((song, index) => {
                             const isCurrentSong = currentSong?.id === song.id;
                             return (
                               <div
-                                key={song.id || index}
+                                key={`all-tab-${song.isLyricsMatch ? 'lyrics' : 'regular'}-${song.id || `fallback-${index}`}`}
                                 className={`flex items-center gap-3 p-2 rounded-md hover:bg-muted/30 group cursor-pointer transition-colors duration-150 ${isCurrentSong ? 'bg-muted/40' : ''
                                   }`}
-                                onClick={() => handlePlayClick(song, searchResults.songs.results)}
+                                onClick={() => handlePlayClick(song, combinedSearchResults.songs.results)}
                               >
                                 <div className="text-sm text-muted-foreground w-4 text-center shrink-0">
                                   {index + 1}
@@ -767,13 +957,23 @@ function SearchPageContent() {
                                     </div>
                                   )}
                                 </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className={`font-medium truncate text-sm ${isCurrentSong ? 'text-green-500' : 'text-foreground'
-                                    }`}>
+                                <div className="flex-1 min-w-0 overflow-hidden pr-1">
+                                  <p className={`font-medium text-sm leading-tight truncate block ${isCurrentSong ? 'text-green-500' : 'text-foreground'
+                                    }`} style={{
+                                      whiteSpace: 'nowrap',
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                      maxWidth: '100%'
+                                    }}>
                                     {decodeHtmlEntities(song.title || song.name)}
                                   </p>
-                                  <p className={`text-xs truncate ${isCurrentSong ? 'text-green-400' : 'text-muted-foreground'
-                                    }`}>
+                                  <p className={`text-xs leading-tight truncate block ${isCurrentSong ? 'text-green-400' : 'text-muted-foreground'
+                                    }`} style={{
+                                      whiteSpace: 'nowrap',
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                      maxWidth: '100%'
+                                    }}>
                                     {getArtistNames(song)}
                                   </p>
                                 </div>
@@ -868,11 +1068,11 @@ function SearchPageContent() {
                   </div>
 
                   {/* Artists Section */}
-                  {searchResults.artists?.results?.length > 0 && (
+                  {combinedSearchResults.artists?.results?.length > 0 && (
                     <div>
                       <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Artists</h2>
                       <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-3 sm:gap-4">
-                        {searchResults.artists.results.slice(0, 8).map((artist, index) => (
+                        {combinedSearchResults.artists.results.slice(0, 8).map((artist, index) => (
                           <div
                             key={artist.id || index}
                             className="text-center group cursor-pointer hover:scale-105 transition-transform duration-200"
@@ -923,11 +1123,11 @@ function SearchPageContent() {
                   )}
 
                   {/* Albums Section */}
-                  {searchResults.albums?.results?.length > 0 && (
+                  {combinedSearchResults.albums?.results?.length > 0 && (
                     <div>
                       <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Albums</h2>
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
-                        {searchResults.albums.results.slice(0, 6).map((album, index) => (
+                        {combinedSearchResults.albums.results.slice(0, 6).map((album, index) => (
                           <div
                             key={album.id || index}
                             className="group cursor-pointer hover:scale-105 transition-transform duration-200"
@@ -959,54 +1159,94 @@ function SearchPageContent() {
                   )}
 
                   {/* Playlists Section */}
-                  {searchResults.playlists?.results?.length > 0 && (
+                  {(combinedSearchResults.playlists?.results?.length > 0 || publicPlaylists?.length > 0) && (
                     <div>
                       <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Playlists</h2>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
-                        {searchResults.playlists.results.slice(0, 6).map((playlist, index) => (
-                          <div
-                            key={playlist.id || index}
-                            className="group cursor-pointer hover:scale-105 transition-transform duration-200"
-                            onClick={() => handlePlaylistClick(playlist.id)}
-                          >
-                            <div className="w-full aspect-square rounded-xl bg-muted mb-3 overflow-hidden shadow-md group-hover:shadow-lg transition-shadow">
-                              {playlist.image?.[2]?.url ? (
-                                <img
-                                  src={playlist.image[2].url}
-                                  alt={playlist.title}
-                                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                                />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-purple-500 to-pink-500">
-                                  <Play className="w-6 h-6 sm:w-8 sm:h-8 text-white/70" />
+
+                      {/* User-created Public Playlists */}
+                      {publicPlaylists?.length > 0 && (
+                        <div className="mb-6">
+                          <h3 className="text-lg font-semibold mb-3 text-muted-foreground">Community Playlists</h3>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
+                            {publicPlaylists.slice(0, 6).map((playlist, index) => (
+                              <div
+                                key={`public-${playlist.id || index}`}
+                                className="group cursor-pointer hover:scale-105 transition-transform duration-200"
+                                onClick={() => router.push(`/music/playlists/${playlist.id}`)}
+                              >
+                                <div className="relative">
+                                  <PlaylistCover
+                                    playlist={playlist}
+                                    className="w-full aspect-square mb-3 shadow-md group-hover:shadow-lg"
+                                  />
+                                  {/* User-created badge */}
+                                  <div className="absolute top-2 right-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full font-medium">
+                                    {playlist.songCount || 0}
+                                  </div>
                                 </div>
-                              )}
-                            </div>
-                            <p className="font-medium truncate text-xs sm:text-sm mb-1">
-                              {decodeHtmlEntities(playlist.title)}
-                            </p>
-                            <p className="text-xs text-muted-foreground truncate">
-                              By {playlist.subtitle || 'Various Artists'}
-                            </p>
+                                <p className="font-medium truncate text-xs sm:text-sm mb-1">
+                                  {decodeHtmlEntities(playlist.title)}
+                                </p>
+                                <p className="text-xs text-muted-foreground truncate">
+                                  By {playlist.userName || 'Unknown User'}
+                                </p>
+                              </div>
+                            ))}
                           </div>
-                        ))}
-                      </div>
+                        </div>
+                      )}
+
+                      {/* JioSaavn Playlists */}
+                      {searchResults.playlists?.results?.length > 0 && (
+                        <div>
+                          <h3 className="text-lg font-semibold mb-3 text-muted-foreground">Featured Playlists</h3>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
+                            {combinedSearchResults.playlists.results.slice(0, 6).map((playlist, index) => (
+                              <div
+                                key={`jiosaavn-${playlist.id || index}`}
+                                className="group cursor-pointer hover:scale-105 transition-transform duration-200"
+                                onClick={() => handlePlaylistClick(playlist.id)}
+                              >
+                                <div className="w-full aspect-square rounded-xl bg-muted mb-3 overflow-hidden shadow-md group-hover:shadow-lg transition-shadow">
+                                  {playlist.image?.[2]?.url ? (
+                                    <img
+                                      src={playlist.image[2].url}
+                                      alt={playlist.title}
+                                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                                    />
+                                  ) : (
+                                    <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-purple-500 to-pink-500">
+                                      <Play className="w-6 h-6 sm:w-8 sm:h-8 text-white/70" />
+                                    </div>
+                                  )}
+                                </div>
+                                <p className="font-medium truncate text-xs sm:text-sm mb-1">
+                                  {decodeHtmlEntities(playlist.title)}
+                                </p>
+                                <p className="text-xs text-muted-foreground truncate">
+                                  By {playlist.subtitle || 'Various Artists'}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </TabsContent>
 
                 {/* Songs Tab */}
                 <TabsContent value="songs">
-                  {searchResults.songs?.results?.length > 0 ? (
+                  {combinedSearchResults.songs?.results?.length > 0 ? (
                     <div className="space-y-1">
-                      {searchResults.songs.results.map((song, index) => {
+                      {combinedSearchResults.songs.results.map((song, index) => {
                         const isCurrentSong = currentSong?.id === song.id;
                         return (
                           <div
-                            key={song.id || index}
+                            key={`songs-tab-${song.isLyricsMatch ? 'lyrics' : 'regular'}-${song.id || `fallback-${index}`}`}
                             className={`flex items-center gap-4 p-3 rounded-md hover:bg-muted/30 group cursor-pointer transition-colors duration-150 ${isCurrentSong ? 'bg-muted/40' : ''
                               }`}
-                            onClick={() => handlePlayClick(song, searchResults.songs.results)}
+                            onClick={() => handlePlayClick(song, combinedSearchResults.songs.results)}
                           >
                             <div className="text-sm text-muted-foreground w-6 text-center shrink-0">
                               {index + 1}
@@ -1034,13 +1274,23 @@ function SearchPageContent() {
                                 </div>
                               )}
                             </div>
-                            <div className="flex-1 min-w-0">
-                              <p className={`font-medium truncate text-base ${isCurrentSong ? 'text-green-500' : 'text-foreground'
-                                }`}>
+                            <div className="flex-1 min-w-0 overflow-hidden pr-2">
+                              <p className={`font-medium text-sm sm:text-base leading-tight truncate block ${isCurrentSong ? 'text-green-500' : 'text-foreground'
+                                }`} style={{
+                                  whiteSpace: 'nowrap',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  maxWidth: '100%'
+                                }}>
                                 {decodeHtmlEntities(song.title)}
                               </p>
-                              <p className={`text-sm truncate ${isCurrentSong ? 'text-green-400' : 'text-muted-foreground'
-                                }`}>
+                              <p className={`text-xs sm:text-sm leading-tight truncate block ${isCurrentSong ? 'text-green-400' : 'text-muted-foreground'
+                                }`} style={{
+                                  whiteSpace: 'nowrap',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  maxWidth: '100%'
+                                }}>
                                 {getArtistNames(song)}
                               </p>
                             </div>
@@ -1147,9 +1397,9 @@ function SearchPageContent() {
 
                 {/* Albums Tab */}
                 <TabsContent value="albums">
-                  {searchResults.albums?.results?.length > 0 ? (
+                  {combinedSearchResults.albums?.results?.length > 0 ? (
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4 sm:gap-6">
-                      {searchResults.albums.results.map((album, index) => (
+                      {combinedSearchResults.albums.results.map((album, index) => (
                         <div
                           key={album.id || index}
                           className="group cursor-pointer hover:scale-105 transition-transform duration-200"
@@ -1190,9 +1440,9 @@ function SearchPageContent() {
 
                 {/* Artists Tab */}
                 <TabsContent value="artists">
-                  {searchResults.artists?.results?.length > 0 ? (
+                  {combinedSearchResults.artists?.results?.length > 0 ? (
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4 sm:gap-6">
-                      {searchResults.artists.results.map((artist, index) => (
+                      {combinedSearchResults.artists.results.map((artist, index) => (
                         <div
                           key={artist.id || index}
                           className="text-center group cursor-pointer hover:scale-105 transition-transform duration-200"
@@ -1250,37 +1500,110 @@ function SearchPageContent() {
 
                 {/* Playlists Tab */}
                 <TabsContent value="playlists">
-                  {searchResults.playlists?.results?.length > 0 ? (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4 sm:gap-6">
-                      {searchResults.playlists.results.map((playlist, index) => (
-                        <div
-                          key={playlist.id || index}
-                          className="group cursor-pointer hover:scale-105 transition-transform duration-200"
-                          onClick={() => handlePlaylistClick(playlist.id)}
-                        >
-                          <div className="w-full aspect-square rounded-xl bg-muted mb-3 overflow-hidden shadow-lg group-hover:shadow-xl transition-shadow">
-                            {playlist.image?.[2]?.url ? (
-                              <img
-                                src={playlist.image[2].url}
-                                alt={playlist.title}
-                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                              />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-purple-500 to-pink-500">
-                                <Play className="w-8 h-8 text-white/70" />
-                              </div>
-                            )}
-                          </div>
-                          <p className="font-semibold truncate text-sm sm:text-base mb-1">
-                            {decodeHtmlEntities(playlist.title)}
-                          </p>
-                          <p className="text-xs sm:text-sm text-muted-foreground truncate">
-                            By {playlist.subtitle || 'Various Artists'}
-                          </p>
-                        </div>
-                      ))}
+                  {publicPlaylistsLoading && (
+                    <div className="flex items-center justify-center py-12">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                      <span className="ml-3 text-muted-foreground">Searching playlists...</span>
                     </div>
-                  ) : (
+                  )}
+
+                  {(combinedSearchResults.playlists?.results?.length > 0 || publicPlaylists?.length > 0) ? (
+                    <div className="space-y-8">
+                      {/* User-created Public Playlists */}
+                      {publicPlaylists?.length > 0 && (
+                        <div>
+                          <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-lg font-semibold">Community Playlists</h3>
+                            <span className="text-sm text-muted-foreground">
+                              {publicPlaylists.length} playlist{publicPlaylists.length !== 1 ? 's' : ''}
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4 sm:gap-6">
+                            {publicPlaylists.map((playlist, index) => (
+                              <div
+                                key={`public-${playlist.id || index}`}
+                                className="group cursor-pointer hover:scale-105 transition-transform duration-200"
+                                onClick={() => router.push(`/music/playlists/${playlist.id}`)}
+                              >
+                                <div className="relative">
+                                  <PlaylistCover
+                                    playlist={playlist}
+                                    className="w-full aspect-square mb-3 shadow-lg group-hover:shadow-xl"
+                                  />
+                                  {/* Song count badge */}
+                                  <div className="absolute top-2 right-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full font-medium">
+                                    {playlist.songCount || 0}
+                                  </div>
+                                  {/* User avatar */}
+                                  {playlist.userImage && (
+                                    <div className="absolute bottom-2 left-2 w-6 h-6 rounded-full overflow-hidden border-2 border-white">
+                                      <img
+                                        src={playlist.userImage}
+                                        alt={playlist.userName}
+                                        className="w-full h-full object-cover"
+                                      />
+                                    </div>
+                                  )}
+                                </div>
+                                <p className="font-semibold truncate text-sm sm:text-base mb-1">
+                                  {decodeHtmlEntities(playlist.title)}
+                                </p>
+                                <p className="text-xs sm:text-sm text-muted-foreground truncate">
+                                  By {playlist.userName || 'Unknown User'}
+                                </p>
+                                {playlist.description && (
+                                  <p className="text-xs text-muted-foreground truncate mt-1">
+                                    {playlist.description}
+                                  </p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* JioSaavn Playlists */}
+                      {searchResults.playlists?.results?.length > 0 && (
+                        <div>
+                          <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-lg font-semibold">Featured Playlists</h3>
+                            <span className="text-sm text-muted-foreground">
+                              {combinedSearchResults.playlists.results.length} playlist{combinedSearchResults.playlists.results.length !== 1 ? 's' : ''}
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4 sm:gap-6">
+                            {searchResults.playlists.results.map((playlist, index) => (
+                              <div
+                                key={`jiosaavn-${playlist.id || index}`}
+                                className="group cursor-pointer hover:scale-105 transition-transform duration-200"
+                                onClick={() => handlePlaylistClick(playlist.id)}
+                              >
+                                <div className="w-full aspect-square rounded-xl bg-muted mb-3 overflow-hidden shadow-lg group-hover:shadow-xl transition-shadow">
+                                  {playlist.image?.[2]?.url ? (
+                                    <img
+                                      src={playlist.image[2].url}
+                                      alt={playlist.title}
+                                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                                    />
+                                  ) : (
+                                    <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-purple-500 to-pink-500">
+                                      <Play className="w-8 h-8 text-white/70" />
+                                    </div>
+                                  )}
+                                </div>
+                                <p className="font-semibold truncate text-sm sm:text-base mb-1">
+                                  {decodeHtmlEntities(playlist.title)}
+                                </p>
+                                <p className="text-xs sm:text-sm text-muted-foreground truncate">
+                                  By {playlist.subtitle || 'Various Artists'}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : !publicPlaylistsLoading && (
                     <div className="text-center py-20">
                       <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted/50 flex items-center justify-center">
                         <Search className="w-8 h-8 text-muted-foreground" />
@@ -1290,6 +1613,8 @@ function SearchPageContent() {
                     </div>
                   )}
                 </TabsContent>
+
+
               </Tabs>
             </div>
           )}
@@ -1304,11 +1629,11 @@ function SearchPageContent() {
             </div>
           )}
 
-          {searchQuery && searchResults && !loading && (
-            !searchResults.songs?.results?.length &&
-            !searchResults.albums?.results?.length &&
-            !searchResults.artists?.results?.length &&
-            !searchResults.playlists?.results?.length && (
+          {searchQuery && combinedSearchResults && !loading && (
+            !combinedSearchResults.songs?.results?.length &&
+            !combinedSearchResults.albums?.results?.length &&
+            !combinedSearchResults.artists?.results?.length &&
+            !combinedSearchResults.playlists?.results?.length && (
               <div className="text-center py-12">
                 <p className="text-muted-foreground">No results found for "{searchQuery}"</p>
               </div>

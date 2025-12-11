@@ -15,7 +15,17 @@ export function useLikedPlaylists(userId) {
     
     try {
       const response = await fetch(`/api/liked-playlists?userId=${userId}`);
-      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const text = await response.text();
+      if (!text) {
+        throw new Error('Empty response from server');
+      }
+      
+      const data = JSON.parse(text);
       
       if (data.success) {
         // Separate user-created playlists from API playlists

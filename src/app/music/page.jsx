@@ -262,7 +262,7 @@ export default function MusicPage() {
                     const songPromises = songsToFetch.map(async (songId) => {
                       try {
                         const response = await fetch(
-                          `https://jiosaavn-api-blush.vercel.app/api/songs?ids=${songId}`
+                          `https://jiosaavn-api-blush.vercel.app/api/songs/${songId}`
                         );
                         const data = await response.json();
                         if (data.success && data.data && data.data.length > 0) {
