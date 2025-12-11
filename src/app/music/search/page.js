@@ -323,6 +323,10 @@ function SearchPageContent() {
   // Handle search query changes (both from user input and initial URL query)
   useEffect(() => {
     if (searchQuery.trim()) {
+      // Clear results immediately when starting a new search
+      setSearchResults(null);
+      setLyricsResults(null);
+      setPublicPlaylists(null);
       debouncedSearchRef.current(searchQuery);
     } else {
       // Clear results when search query is empty
@@ -337,7 +341,8 @@ function SearchPageContent() {
 
   // Combine lyrics search results with regular search results
   const combinedSearchResults = React.useMemo(() => {
-    if (!searchResults) return null;
+    // Don't show any results while loading to prevent flash of old content
+    if (loading || lyricsLoading || !searchResults) return null;
 
     // Start with regular search results
     const combined = { ...searchResults };
@@ -349,6 +354,8 @@ function SearchPageContent() {
     if (!combined.songs.results) {
       combined.songs.results = [];
     }
+
+    let topLyricsMatch = null;
 
     // Add songs from lyrics search that have JioSaavn matches
     if (lyricsResults && Array.isArray(lyricsResults) && lyricsResults.length > 0) {
@@ -367,10 +374,15 @@ function SearchPageContent() {
           isLyricsMatch: true,
           geniusData: result.genius,
           // Add a unique identifier to prevent key conflicts
-          _lyricsIndex: index
+          _lyricsIndex: index,
+          // Add the final score from lyrics search for prioritization
+          lyricsScore: result.finalScore || 0
         }));
 
       if (lyricsBasedSongs.length > 0) {
+        // Get the top lyrics match (highest score)
+        topLyricsMatch = lyricsBasedSongs[0];
+
         // Create a more robust deduplication using both ID and title
         const existingSongs = new Map();
         combined.songs.results.forEach(song => {
@@ -400,11 +412,26 @@ function SearchPageContent() {
       }
     }
 
+    // Override topQuery with the best lyrics match if it has a high score
+    if (topLyricsMatch && topLyricsMatch.lyricsScore > 200) {
+      console.log('🎯 Using lyrics match as top result:', topLyricsMatch.title, 'Score:', topLyricsMatch.lyricsScore);
+      combined.topQuery = {
+        ...topLyricsMatch,
+        type: 'song'
+      };
+    }
+
     return combined;
   }, [searchResults, lyricsResults]);
 
   const handlePlayClick = async (song, playlist = []) => {
     try {
+      // Check if the same song is already playing - if so, do nothing
+      if (currentSong?.id === song.id && isPlaying) {
+        console.log('Song is already playing, ignoring click');
+        return;
+      }
+
       // Always fetch detailed data for the current song if it doesn't have downloadUrl
       let detailedCurrentSong = song;
       if (!song.downloadUrl && song.id) {
@@ -850,7 +877,7 @@ function SearchPageContent() {
 
                           return (
                             <div
-                              className="bg-linear-to-br from-muted/40 to-muted/20 rounded-xl p-4 sm:p-6 relative overflow-hidden cursor-pointer group hover:from-muted/50 hover:to-muted/30 transition-all duration-300 border border-muted/20"
+                              className="bg-gradient-to-br from-muted/40 to-muted/20 rounded-xl p-4 sm:p-6 relative overflow-hidden cursor-pointer group hover:from-muted/50 hover:to-muted/30 transition-all duration-300"
                               onClick={() => {
                                 if (resultType === 'song') {
                                   handlePlayClick(topResult, searchResults.songs?.results || [topResult]);
