@@ -30,11 +30,14 @@ import {
 import { Play, ArrowLeft, Heart, MoreVertical, Clock, Shuffle, Download, Plus, User, Disc, Share } from "lucide-react";
 import { useLikedSongs } from "@/hooks/useLikedSongs";
 import { useMusicPlayer } from "@/contexts/music-player-context";
+import { AddToPlaylistDialog } from "@/components/playlists/AddToPlaylistDialog";
 
 export default function FavoritesPage() {
   const router = useRouter();
   const { data: session } = useSession();
   const [currentlyPlaying, setCurrentlyPlaying] = useState(null);
+  const [addToPlaylistDialogOpen, setAddToPlaylistDialogOpen] = useState(false);
+  const [selectedSong, setSelectedSong] = useState(null);
 
   // Initialize liked songs hook
   const { likedSongs, loading, toggleLike, getLikedCount } = useLikedSongs(session?.user?.id);
@@ -43,6 +46,13 @@ export default function FavoritesPage() {
   const { playSong, currentSong, isPlaying } = useMusicPlayer();
 
   const handlePlayClick = (song, index) => {
+    const isCurrentSong = currentSong?.id === song.songId;
+    
+    // If clicking on the currently playing song, do nothing
+    if (isCurrentSong) {
+      return;
+    }
+
     // Convert liked song format to standard song format for the player
     const songData = {
       id: song.songId,
@@ -141,8 +151,8 @@ export default function FavoritesPage() {
 
   const handleAddToPlaylist = (e, song) => {
     e.stopPropagation();
-    // TODO: Implement add to playlist functionality
-    console.log('Add to playlist:', song.songName);
+    setSelectedSong(song);
+    setAddToPlaylistDialogOpen(true);
   };
 
   const handleGoToArtist = (e, song) => {
@@ -171,6 +181,173 @@ export default function FavoritesPage() {
       // Fallback: copy to clipboard
       navigator.clipboard.writeText(window.location.href);
       console.log('Link copied to clipboard');
+    }
+  };
+
+  const handleDownloadAllLikedSongs = async () => {
+    if (likedSongs.length === 0) {
+      // Show toast if no songs to download
+      const toast = document.createElement('div');
+      toast.className = 'fixed bottom-4 right-4 bg-orange-600 text-white px-4 py-2 rounded-lg shadow-lg z-50 transition-opacity duration-300';
+      toast.textContent = 'No liked songs to download!';
+      document.body.appendChild(toast);
+
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => {
+          document.body.removeChild(toast);
+        }, 300);
+      }, 3000);
+      return;
+    }
+
+    // Show initial toast
+    const progressToast = document.createElement('div');
+    progressToast.className = 'fixed bottom-4 right-4 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg z-50 transition-opacity duration-300';
+    progressToast.innerHTML = `
+      <div class="flex items-center gap-2">
+        <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+        <span>Downloading liked songs... (0/${likedSongs.length})</span>
+      </div>
+    `;
+    document.body.appendChild(progressToast);
+
+    let downloadedCount = 0;
+    let failedCount = 0;
+
+    // Download songs with a small delay between each to avoid overwhelming the server
+    for (let i = 0; i < likedSongs.length; i++) {
+      const song = likedSongs[i];
+
+      try {
+        // Update progress
+        progressToast.innerHTML = `
+          <div class="flex items-center gap-2">
+            <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            <span>Downloading "${decodeHtmlEntities(song.songName)}"... (${i + 1}/${likedSongs.length})</span>
+          </div>
+        `;
+
+        await downloadSingleLikedSong(song);
+        downloadedCount++;
+      } catch (error) {
+        console.error(`Failed to download ${song.songName}:`, error);
+        failedCount++;
+      }
+
+      // Small delay between downloads
+      if (i < likedSongs.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    }
+
+    // Remove progress toast
+    progressToast.style.opacity = '0';
+    setTimeout(() => {
+      document.body.removeChild(progressToast);
+    }, 300);
+
+    // Show completion toast
+    const completionToast = document.createElement('div');
+    if (failedCount === 0) {
+      completionToast.className = 'fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg z-50 transition-opacity duration-300';
+      completionToast.textContent = `Successfully downloaded all ${downloadedCount} liked songs!`;
+    } else if (downloadedCount > 0) {
+      completionToast.className = 'fixed bottom-4 right-4 bg-orange-600 text-white px-4 py-2 rounded-lg shadow-lg z-50 transition-opacity duration-300';
+      completionToast.textContent = `Downloaded ${downloadedCount} songs, ${failedCount} failed from liked songs`;
+    } else {
+      completionToast.className = 'fixed bottom-4 right-4 bg-red-600 text-white px-4 py-2 rounded-lg shadow-lg z-50 transition-opacity duration-300';
+      completionToast.textContent = `Failed to download liked songs. Please try again.`;
+    }
+
+    document.body.appendChild(completionToast);
+    setTimeout(() => {
+      completionToast.style.opacity = '0';
+      setTimeout(() => {
+        document.body.removeChild(completionToast);
+      }, 300);
+    }, 5000);
+  };
+
+  const downloadSingleLikedSong = async (song) => {
+    // First, try to get download links from the song object
+    let downloadUrl = null;
+
+    // Check if song already has download URLs
+    if (song.downloadUrl && Array.isArray(song.downloadUrl)) {
+      // Look for 320kbps quality first, then fallback to highest available
+      const highQuality = song.downloadUrl.find(url => url.quality === '320kbps') ||
+        song.downloadUrl.find(url => url.quality === '160kbps') ||
+        song.downloadUrl[song.downloadUrl.length - 1];
+      downloadUrl = highQuality?.url;
+    }
+
+    // If no download URL found, fetch from API
+    if (!downloadUrl) {
+      const response = await fetch(`https://jiosaavn-api-blush.vercel.app/api/songs?ids=${song.songId}`);
+      const data = await response.json();
+
+      if (data.success && data.data && data.data[0]?.downloadUrl) {
+        const songData = data.data[0];
+        // Look for 320kbps quality first, then fallback to highest available
+        const highQuality = songData.downloadUrl.find(url => url.quality === '320kbps') ||
+          songData.downloadUrl.find(url => url.quality === '160kbps') ||
+          songData.downloadUrl[songData.downloadUrl.length - 1];
+        downloadUrl = highQuality?.url;
+      }
+    }
+
+    if (!downloadUrl) {
+      throw new Error('No download URL available');
+    }
+
+    const filename = `${decodeHtmlEntities(song.songName)} - ${song.artists?.[0]?.name || 'Unknown Artist'}.mp3`;
+
+    try {
+      // Fetch the file as a blob
+      const response = await fetch(downloadUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'audio/mpeg, audio/mp4, */*'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      // Get the file as a blob
+      const blob = await response.blob();
+
+      // Create a blob URL
+      const blobUrl = window.URL.createObjectURL(blob);
+
+      // Create a temporary anchor element for download
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = filename;
+      link.style.display = 'none';
+
+      // Add to DOM, click, and remove
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      // Clean up the blob URL after a short delay
+      setTimeout(() => {
+        window.URL.revokeObjectURL(blobUrl);
+      }, 1000);
+
+    } catch (fetchError) {
+      // Fallback: try direct link method if blob fetch fails
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = filename;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     }
   };
 
@@ -350,7 +527,7 @@ export default function FavoritesPage() {
                     Liked Songs
                   </h1>
                   <div className="flex items-center justify-center gap-2 text-sm opacity-80">
-                    <span className="font-semibold">shree jaybhay</span>
+                    <span className="font-semibold">{session?.user?.name || 'You'}</span>
                     <span>•</span>
                     <span>{getLikedCount()} songs</span>
                   </div>
@@ -371,7 +548,7 @@ export default function FavoritesPage() {
                   Liked Songs
                 </h1>
                 <div className="flex items-center gap-2 text-sm opacity-80">
-                  <span className="font-semibold">shree jaybhay</span>
+                  <span className="font-semibold">{session?.user?.name || 'You'}</span>
                   <span>•</span>
                   <span>{getLikedCount()} songs</span>
                 </div>
@@ -393,12 +570,16 @@ export default function FavoritesPage() {
               <Button variant="ghost" size="lg" className="rounded-full w-10 h-10 md:w-12 md:h-12">
                 <Shuffle className="w-5 h-5 md:w-6 md:h-6" />
               </Button>
-              <Button variant="ghost" size="lg" className="rounded-full w-10 h-10 md:w-12 md:h-12">
+              <Button
+                variant="ghost"
+                size="lg"
+                className="rounded-full w-10 h-10 md:w-12 md:h-12"
+                onClick={handleDownloadAllLikedSongs}
+                disabled={likedSongs.length === 0}
+              >
                 <Download className="w-5 h-5 md:w-6 md:h-6" />
               </Button>
-              <Button variant="ghost" size="lg" className="rounded-full w-10 h-10 md:w-12 md:h-12">
-                <MoreVertical className="w-5 h-5 md:w-6 md:h-6" />
-              </Button>
+             
             </div>
           </div>
 
@@ -553,10 +734,6 @@ export default function FavoritesPage() {
                                   Go to album
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem onClick={(e) => handleShare(e, likedSong)}>
-                                  <Share className="w-4 h-4 mr-2" />
-                                  Share
-                                </DropdownMenuItem>
                                 <DropdownMenuItem onClick={(e) => handleDownload(e, likedSong)}>
                                   <Download className="w-4 h-4 mr-2" />
                                   Download
@@ -720,10 +897,6 @@ export default function FavoritesPage() {
                                   Go to album
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem onClick={(e) => handleShare(e, likedSong)}>
-                                  <Share className="w-4 h-4 mr-2" />
-                                  Share
-                                </DropdownMenuItem>
                                 <DropdownMenuItem onClick={(e) => handleDownload(e, likedSong)}>
                                   <Download className="w-4 h-4 mr-2" />
                                   Download
@@ -774,6 +947,13 @@ export default function FavoritesPage() {
           </div>
         </div>
       </SidebarInset>
+
+      {/* Add to Playlist Dialog */}
+      <AddToPlaylistDialog
+        open={addToPlaylistDialogOpen}
+        onOpenChange={setAddToPlaylistDialogOpen}
+        song={selectedSong}
+      />
     </SidebarProvider>
   );
 }

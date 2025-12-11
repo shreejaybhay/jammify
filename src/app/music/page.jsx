@@ -42,6 +42,7 @@ export default function MusicPage() {
   const { likedPlaylists, loading: playlistsLoading } = useLikedPlaylists(
     session?.user?.id
   );
+  const [playlistsWithCovers, setPlaylistsWithCovers] = useState([]);
 
   useEffect(() => {
     const fetchNewReleases = async () => {
@@ -220,20 +221,146 @@ export default function MusicPage() {
     });
   };
 
-  // Extract colors when playlists load
+  // Fetch song data for user-created playlists and generate covers
   useEffect(() => {
-    if (!playlistsLoading && likedPlaylists.length > 0) {
-      likedPlaylists.slice(0, 5).forEach((playlist) => {
-        const imageUrl =
-          playlist.image?.[2]?.url ||
-          playlist.image?.[1]?.url ||
-          playlist.image?.[0]?.url;
-        if (imageUrl && !playlistColors[playlist.playlistId]) {
-          extractDominantColor(imageUrl, playlist.playlistId);
-        }
-      });
-    }
+    const fetchPlaylistCovers = async () => {
+      if (!playlistsLoading && likedPlaylists.length > 0) {
+        const playlistsWithCoversData = await Promise.all(
+          likedPlaylists.slice(0, 5).map(async (playlist) => {
+            // Check if it's a user-created playlist (MongoDB ObjectId format)
+            const isUserPlaylist =
+              playlist.playlistId &&
+              playlist.playlistId.length === 24 &&
+              /^[0-9a-fA-F]{24}$/.test(playlist.playlistId);
+
+            if (isUserPlaylist) {
+              try {
+                // Fetch the actual playlist data to get song IDs
+                const playlistResponse = await fetch(
+                  `/api/playlists/${playlist.playlistId}`
+                );
+                const playlistResult = await playlistResponse.json();
+
+                if (playlistResult.success && playlistResult.data) {
+                  // Check if playlist is private and user is not the owner
+                  if (
+                    !playlistResult.data.isPublic &&
+                    !playlistResult.data.isOwner
+                  ) {
+                    return null; // Filter out private playlists
+                  }
+
+                  if (
+                    playlistResult.data.songIds &&
+                    playlistResult.data.songIds.length > 0
+                  ) {
+                    // Fetch first few songs for cover generation
+                    const songsToFetch = playlistResult.data.songIds.slice(
+                      0,
+                      4
+                    );
+                    const songPromises = songsToFetch.map(async (songId) => {
+                      try {
+                        const response = await fetch(
+                          `https://jiosaavn-api-blush.vercel.app/api/songs?ids=${songId}`
+                        );
+                        const data = await response.json();
+                        if (data.success && data.data && data.data.length > 0) {
+                          return data.data[0];
+                        }
+                        return null;
+                      } catch (error) {
+                        console.error(`Error fetching song ${songId}:`, error);
+                        return null;
+                      }
+                    });
+
+                    const fetchedSongs = await Promise.all(songPromises);
+                    const validSongs = fetchedSongs.filter(
+                      (song) => song !== null
+                    );
+
+                    return {
+                      ...playlist,
+                      songs: validSongs,
+                      actualPlaylistData: playlistResult.data,
+                      songCount: playlistResult.data.songIds?.length || 0,
+                    };
+                  }
+                }
+              } catch (error) {
+                console.error("Error fetching playlist data:", error);
+              }
+            } else {
+              // For API playlists, extract color from existing image
+              const imageUrl =
+                playlist.image?.[2]?.url ||
+                playlist.image?.[1]?.url ||
+                playlist.image?.[0]?.url;
+              if (imageUrl && !playlistColors[playlist.playlistId]) {
+                extractDominantColor(imageUrl, playlist.playlistId);
+              }
+            }
+
+            return playlist;
+          })
+        );
+
+        // Filter out null values (private playlists)
+        const filteredPlaylists = playlistsWithCoversData.filter(
+          (playlist) => playlist !== null
+        );
+        setPlaylistsWithCovers(filteredPlaylists);
+      }
+    };
+
+    fetchPlaylistCovers();
   }, [likedPlaylists, playlistsLoading, playlistColors]);
+
+  // Generate playlist cover based on songs (same logic as library page)
+  const getPlaylistCover = (playlist) => {
+    const songs = playlist.songs || [];
+
+    if (!songs || songs.length === 0) {
+      return { type: "default", src: "/def playlist image.jpg" };
+    }
+
+    if (songs.length >= 1 && songs.length <= 3) {
+      // Use first song's cover image
+      const firstSong = songs[0];
+      const imageUrl =
+        firstSong.image?.find((img) => img.quality === "500x500")?.url ||
+        firstSong.image?.find((img) => img.quality === "150x150")?.url ||
+        firstSong.image?.[firstSong.image.length - 1]?.url;
+
+      return {
+        type: "single",
+        src: imageUrl || "/def playlist image.jpg",
+        song: firstSong,
+      };
+    }
+
+    if (songs.length >= 4) {
+      // Create 4-image collage from first 4 songs
+      const firstFourSongs = songs.slice(0, 4);
+      const images = firstFourSongs.map((song) => {
+        return (
+          song.image?.find((img) => img.quality === "150x150")?.url ||
+          song.image?.find((img) => img.quality === "500x500")?.url ||
+          song.image?.[song.image.length - 1]?.url ||
+          "/def playlist image.jpg"
+        );
+      });
+
+      return {
+        type: "collage",
+        images: images,
+        songs: firstFourSongs,
+      };
+    }
+
+    return { type: "default", src: "/def playlist image.jpg" };
+  };
 
   return (
     <SidebarProvider>
@@ -343,91 +470,178 @@ export default function MusicPage() {
                     </div>
                   </div>
                 ))
-              : likedPlaylists.slice(0, 5).map((playlist) => {
-                  const dominantColor =
-                    playlistColors[playlist.playlistId] || "rgb(59,130,246)";
-                  const rgbValues = dominantColor.match(/\d+/g);
-                  const ambientColor = rgbValues
-                    ? `rgba(${rgbValues[0]}, ${rgbValues[1]}, ${rgbValues[2]}, 0.15)`
-                    : "rgba(59,130,246,0.15)";
-                  const hoverColor = rgbValues
-                    ? `rgba(${rgbValues[0]}, ${rgbValues[1]}, ${rgbValues[2]}, 0.25)`
-                    : "rgba(59,130,246,0.25)";
+              : (playlistsWithCovers.length > 0
+                  ? playlistsWithCovers
+                  : likedPlaylists
+                )
+                  .slice(0, 5)
+                  .map((playlist) => {
+                    const dominantColor =
+                      playlistColors[playlist.playlistId] || "rgb(59,130,246)";
+                    const rgbValues = dominantColor.match(/\d+/g);
+                    const ambientColor = rgbValues
+                      ? `rgba(${rgbValues[0]}, ${rgbValues[1]}, ${rgbValues[2]}, 0.15)`
+                      : "rgba(59,130,246,0.15)";
+                    const hoverColor = rgbValues
+                      ? `rgba(${rgbValues[0]}, ${rgbValues[1]}, ${rgbValues[2]}, 0.25)`
+                      : "rgba(59,130,246,0.25)";
 
-                  return (
-                    <div
-                      key={playlist.playlistId}
-                      className="rounded-lg p-3 md:p-4 relative overflow-hidden cursor-pointer transition-all duration-300 flex items-center gap-2 md:gap-3 h-16 md:h-20 group"
-                      style={{
-                        backgroundColor: ambientColor,
-                        "--hover-color": hoverColor,
-                      }}
-                      onMouseEnter={(e) => {
-                        e.target.style.backgroundColor = hoverColor;
-                      }}
-                      onMouseLeave={(e) => {
-                        e.target.style.backgroundColor = ambientColor;
-                      }}
-                      onClick={() =>
-                        router.push(
-                          `/music/playlist/${playlist.playlistId}?songCount=${
-                            playlist.songCount || 50
-                          }`
-                        )
-                      }
-                    >
-                      <div className="w-10 h-10 md:w-12 md:h-12 rounded-sm shrink-0 shadow-lg overflow-hidden">
-                        {playlist.image?.[2]?.url ||
-                        playlist.image?.[1]?.url ||
-                        playlist.image?.[0]?.url ? (
-                          <img
-                            src={
+                    return (
+                      <div
+                        key={playlist.playlistId}
+                        className="rounded-lg p-3 md:p-4 relative overflow-hidden cursor-pointer transition-all duration-300 flex items-center gap-2 md:gap-3 h-16 md:h-20 group"
+                        style={{
+                          backgroundColor: ambientColor,
+                          "--hover-color": hoverColor,
+                        }}
+                        onMouseEnter={(e) => {
+                          e.target.style.backgroundColor = hoverColor;
+                        }}
+                        onMouseLeave={(e) => {
+                          e.target.style.backgroundColor = ambientColor;
+                        }}
+                        onClick={() => {
+                          // Check if it's a user-created playlist (MongoDB ObjectId format) or API playlist
+                          const isUserPlaylist =
+                            playlist.playlistId &&
+                            playlist.playlistId.length === 24 &&
+                            /^[0-9a-fA-F]{24}$/.test(playlist.playlistId);
+
+                          if (isUserPlaylist) {
+                            // User-created playlist - use /music/playlists/{id}
+                            router.push(
+                              `/music/playlists/${playlist.playlistId}`
+                            );
+                          } else {
+                            // API playlist - use /music/playlist/{id}
+                            router.push(
+                              `/music/playlist/${
+                                playlist.playlistId
+                              }?songCount=${playlist.songCount || 50}`
+                            );
+                          }
+                        }}
+                      >
+                        <div className="w-10 h-10 md:w-12 md:h-12 rounded-sm shrink-0 shadow-lg overflow-hidden relative">
+                          {(() => {
+                            // Check if it's a user-created playlist with songs data
+                            const isUserPlaylist =
+                              playlist.playlistId &&
+                              playlist.playlistId.length === 24 &&
+                              /^[0-9a-fA-F]{24}$/.test(playlist.playlistId);
+
+                            if (isUserPlaylist && playlist.songs) {
+                              // Use dynamic cover generation for user playlists
+                              const cover = getPlaylistCover(playlist);
+
+                              if (cover.type === "single") {
+                                return (
+                                  <img
+                                    src={cover.src}
+                                    alt={playlist.playlistName || "Playlist"}
+                                    className="w-full h-full object-cover"
+                                    loading="lazy"
+                                    onError={(e) => {
+                                      e.target.src = "/def playlist image.jpg";
+                                    }}
+                                  />
+                                );
+                              } else if (cover.type === "collage") {
+                                return (
+                                  <div className="w-full h-full grid grid-cols-2 gap-0.5 bg-black">
+                                    {cover.images.map((imageSrc, index) => (
+                                      <div
+                                        key={index}
+                                        className="w-full h-full overflow-hidden"
+                                      >
+                                        <img
+                                          src={imageSrc}
+                                          alt={`Song ${index + 1}`}
+                                          className="w-full h-full object-cover"
+                                          loading="lazy"
+                                          onError={(e) => {
+                                            e.target.src =
+                                              "/def playlist image.jpg";
+                                          }}
+                                        />
+                                      </div>
+                                    ))}
+                                  </div>
+                                );
+                              } else {
+                                return (
+                                  <img
+                                    src="/def playlist image.jpg"
+                                    alt={playlist.playlistName || "Playlist"}
+                                    className="w-full h-full object-cover"
+                                  />
+                                );
+                              }
+                            } else if (
                               playlist.image?.[2]?.url ||
                               playlist.image?.[1]?.url ||
                               playlist.image?.[0]?.url
+                            ) {
+                              // Use API playlist image for JioSaavn playlists
+                              return (
+                                <img
+                                  src={
+                                    playlist.image[2]?.url ||
+                                    playlist.image[1]?.url ||
+                                    playlist.image[0]?.url
+                                  }
+                                  alt={playlist.playlistName || "Playlist"}
+                                  className="w-full h-full object-cover"
+                                  loading="lazy"
+                                  onError={(e) => {
+                                    e.target.style.display = "none";
+                                    const fallback =
+                                      e.target.nextElementSibling;
+                                    if (fallback) {
+                                      fallback.style.display = "flex";
+                                    }
+                                  }}
+                                />
+                              );
+                            } else {
+                              // Fallback to default icon
+                              return (
+                                <div
+                                  className="w-full h-full flex items-center justify-center"
+                                  style={{
+                                    background: `linear-gradient(135deg, ${dominantColor}, ${dominantColor
+                                      .replace("rgb", "rgba")
+                                      .replace(")", ", 0.8)")})`,
+                                  }}
+                                >
+                                  <List className="w-5 h-5 md:w-6 md:h-6 text-white" />
+                                </div>
+                              );
                             }
-                            alt={playlist.playlistName}
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              e.target.style.display = "none";
-                              e.target.nextSibling.style.display = "flex";
+                          })()}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h3 className="font-semibold text-xs md:text-sm text-foreground truncate">
+                            {playlist.playlistName}
+                          </h3>
+                        </div>
+
+                        {/* Play button overlay */}
+                        <div className="opacity-0 group-hover:opacity-100 transition-opacity hidden md:block">
+                          <Button
+                            size="sm"
+                            className="rounded-full w-8 h-8 md:w-10 md:h-10 bg-green-500 hover:bg-green-600 text-black shadow-lg"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handlePlayClick(playlist, "playlist");
                             }}
-                          />
-                        ) : null}
-                        <div
-                          className="w-full h-full flex items-center justify-center"
-                          style={{
-                            display: playlist.image?.[0]?.url ? "none" : "flex",
-                            background: `linear-gradient(135deg, ${dominantColor}, ${dominantColor
-                              .replace("rgb", "rgba")
-                              .replace(")", ", 0.8)")})`,
-                          }}
-                        >
-                          <List className="w-5 h-5 md:w-6 md:h-6 text-white" />
+                          >
+                            <Play className="w-3 h-3 md:w-4 md:h-4 ml-0.5" />
+                          </Button>
                         </div>
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <h3 className="font-semibold text-xs md:text-sm text-foreground truncate">
-                          {playlist.playlistName}
-                        </h3>
-                      </div>
-
-                      {/* Play button overlay */}
-                      <div className="opacity-0 group-hover:opacity-100 transition-opacity hidden md:block">
-                        <Button
-                          size="sm"
-                          className="rounded-full w-8 h-8 md:w-10 md:h-10 bg-green-500 hover:bg-green-600 text-black shadow-lg"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handlePlayClick(playlist, "playlist");
-                          }}
-                        >
-                          <Play className="w-3 h-3 md:w-4 md:h-4 ml-0.5" />
-                        </Button>
-                      </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
           </div>
 
           {/* "New release" */}

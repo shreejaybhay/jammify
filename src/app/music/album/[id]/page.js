@@ -31,6 +31,7 @@ import { Play, ArrowLeft, Heart, MoreVertical, Clock, Shuffle, Calendar, Disc, P
 import { useLikedSongs } from "@/hooks/useLikedSongs";
 import { useLikedAlbums } from "@/hooks/useLikedAlbums";
 import { useMusicPlayer } from "@/contexts/music-player-context";
+import { AddToPlaylistDialog } from "@/components/playlists/AddToPlaylistDialog";
 
 export default function AlbumPage() {
   const router = useRouter();
@@ -42,6 +43,8 @@ export default function AlbumPage() {
   const [loading, setLoading] = useState(true);
   const [currentlyPlaying, setCurrentlyPlaying] = useState(null);
   const [dominantColor, setDominantColor] = useState('rgb(34, 197, 94)'); // Default green
+  const [addToPlaylistDialogOpen, setAddToPlaylistDialogOpen] = useState(false);
+  const [selectedSong, setSelectedSong] = useState(null);
 
   // Initialize liked songs hook with actual user ID
   const { toggleLike, isLiked } = useLikedSongs(session?.user?.id);
@@ -232,8 +235,8 @@ export default function AlbumPage() {
 
   const handleAddToPlaylist = (e, song) => {
     e.stopPropagation();
-    // TODO: Implement add to playlist functionality
-    console.log('Add to playlist:', song.name);
+    setSelectedSong(song);
+    setAddToPlaylistDialogOpen(true);
   };
 
   const handleGoToArtist = (e, song) => {
@@ -721,10 +724,6 @@ export default function AlbumPage() {
                               Go to artist
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={(e) => handleShare(e, song)}>
-                              <Share className="w-4 h-4 mr-2" />
-                              Share
-                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={(e) => handleDownload(e, song)}>
                               <Download className="w-4 h-4 mr-2" />
                               Download
@@ -852,10 +851,6 @@ export default function AlbumPage() {
                               Go to artist
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={(e) => handleShare(e, song)}>
-                              <Share className="w-4 h-4 mr-2" />
-                              Share
-                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={(e) => handleDownload(e, song)}>
                               <Download className="w-4 h-4 mr-2" />
                               Download
@@ -891,6 +886,13 @@ export default function AlbumPage() {
           </div>
         </div>
       </SidebarInset>
+
+      {/* Add to Playlist Dialog */}
+      <AddToPlaylistDialog
+        open={addToPlaylistDialogOpen}
+        onOpenChange={setAddToPlaylistDialogOpen}
+        song={selectedSong}
+      />
     </SidebarProvider>
   );
 }

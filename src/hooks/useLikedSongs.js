@@ -9,14 +9,14 @@ export function useLikedSongs(userId) {
   // Fetch all liked songs for the user
   const fetchLikedSongs = useCallback(async () => {
     if (!userId) return;
-    
+
     setLoading(true);
     setError(null);
-    
+
     try {
       const response = await fetch(`/api/liked-songs?userId=${userId}`);
       const data = await response.json();
-      
+
       if (data.success) {
         setLikedSongs(data.data);
         setLikedSongIds(new Set(data.data.map(song => song.songId)));
@@ -37,11 +37,11 @@ export function useLikedSongs(userId) {
       setError('User ID is required');
       return { success: false, error: 'User ID is required' };
     }
-    
+
     // Optimistic update - update UI immediately
     const wasLiked = likedSongIds.has(songData.id);
     const willBeLiked = !wasLiked;
-    
+
     if (willBeLiked) {
       // Optimistically add to liked songs
       setLikedSongIds(prev => new Set([...prev, songData.id]));
@@ -65,7 +65,7 @@ export function useLikedSongs(userId) {
       });
       setLikedSongs(prev => prev.filter(song => song.songId !== songData.id));
     }
-    
+
     try {
       const response = await fetch('/api/liked-songs', {
         method: 'POST',
@@ -77,9 +77,9 @@ export function useLikedSongs(userId) {
           songData
         }),
       });
-      
+
       const result = await response.json();
-      
+
       if (result.success) {
         // Server confirmed the operation, no need to update state again
         // as we already did optimistic update
@@ -109,7 +109,7 @@ export function useLikedSongs(userId) {
             likedAt: new Date().toISOString()
           }, ...prev]);
         }
-        
+
         setError(result.error);
         return result;
       }
@@ -138,7 +138,7 @@ export function useLikedSongs(userId) {
           likedAt: new Date().toISOString()
         }, ...prev]);
       }
-      
+
       const errorMsg = 'Failed to toggle like';
       setError(errorMsg);
       console.error('Error toggling like:', err);

@@ -6,19 +6,31 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Users, RefreshCw, Clock, User, Shield, AlertTriangle, BarChart3 } from "lucide-react";
+import {
+  Users,
+  RefreshCw,
+  Clock,
+  User,
+  Shield,
+  AlertTriangle,
+  BarChart3,
+} from "lucide-react";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { useAdminAccess } from "@/hooks/useAdminAccess";
 import DailyUsersChart from "@/components/analytics/DailyUsersChart";
 
 export default function OnlineUsersPage() {
   const { data: session, status } = useSession();
-  const { isAdmin, isLoading: adminLoading, error: adminError } = useAdminAccess();
+  const {
+    isAdmin,
+    isLoading: adminLoading,
+    error: adminError,
+  } = useAdminAccess();
   const { onlineCount, onlineUsers, isLoading, refreshOnlineUsers } =
     useOnlineStatus();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(null);
-  
+
   // Prevent unnecessary re-checks by memoizing admin status
   const adminStatusChecked = useRef(false);
   const currentUserEmail = useRef(null);
@@ -51,7 +63,7 @@ export default function OnlineUsersPage() {
     if (user.status) {
       return user.status;
     }
-    
+
     const now = new Date();
     const active = new Date(user.lastActive);
     const diffInSeconds = Math.floor((now - active) / 1000);
@@ -97,11 +109,14 @@ export default function OnlineUsersPage() {
 
   // Prevent unnecessary admin re-checks on tab switches
   useEffect(() => {
-    if (session?.user?.email && currentUserEmail.current !== session.user.email) {
+    if (
+      session?.user?.email &&
+      currentUserEmail.current !== session.user.email
+    ) {
       currentUserEmail.current = session.user.email;
       adminStatusChecked.current = false;
     }
-    
+
     if (isAdmin && !adminLoading && !adminStatusChecked.current) {
       adminStatusChecked.current = true;
     }
@@ -148,9 +163,12 @@ export default function OnlineUsersPage() {
               <Shield className="h-8 w-8 text-red-600 dark:text-red-400" />
             </div>
             <div className="text-center space-y-2">
-              <h2 className="text-xl font-semibold text-foreground">Admin Access Required</h2>
+              <h2 className="text-xl font-semibold text-foreground">
+                Admin Access Required
+              </h2>
               <p className="text-muted-foreground max-w-md">
-                This page is restricted to administrators only. You need admin privileges to view online users.
+                This page is restricted to administrators only. You need admin
+                privileges to view online users.
               </p>
               {adminError && (
                 <div className="flex items-center justify-center gap-2 text-sm text-red-600 dark:text-red-400 mt-2">
@@ -177,7 +195,10 @@ export default function OnlineUsersPage() {
           <h1 className="text-3xl font-bold flex items-center gap-2">
             <Users className="h-8 w-8 text-green-500" />
             Online Users
-            <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+            <Badge
+              variant="secondary"
+              className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+            >
               <Shield className="h-3 w-3 mr-1" />
               Admin View
             </Badge>
@@ -233,41 +254,11 @@ export default function OnlineUsersPage() {
               <User className="h-4 w-4 text-muted-foreground" />
               <div>
                 <p className="text-sm font-medium">Auto-refresh</p>
-                <p className="text-sm text-muted-foreground">
-                  Every 8 seconds
-                </p>
+                <p className="text-sm text-muted-foreground">Every 8 seconds</p>
               </div>
             </div>
           </CardContent>
         </Card>
-      </div>
-
-      {/* Daily Active Users Analytics */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-2">
-          <BarChart3 className="h-5 w-5 text-primary" />
-          <h2 className="text-xl font-semibold">Daily Active Users Analytics</h2>
-          <Badge variant="outline" className="text-xs">
-            Admin Only
-          </Badge>
-        </div>
-        
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* 30-day overview */}
-          <DailyUsersChart 
-            days={30}
-            chartType="area"
-            showSummary={true}
-            autoRefresh={false}
-          />
-          
-          {/* 7-day detailed view */}
-          <DailyUsersChart 
-            days={7}
-            chartType="line"
-            showSummary={false}
-          />
-        </div>
       </div>
 
       {/* Online Users List */}
@@ -396,6 +387,32 @@ export default function OnlineUsersPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Daily Active Users Analytics */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <BarChart3 className="h-5 w-5 text-primary" />
+          <h2 className="text-xl font-semibold">
+            Daily Active Users Analytics
+          </h2>
+          <Badge variant="outline" className="text-xs">
+            Admin Only
+          </Badge>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+          {/* 30-day overview */}
+          <DailyUsersChart
+            days={30}
+            chartType="area"
+            showSummary={true}
+            autoRefresh={false}
+          />
+
+          {/* 7-day detailed view */}
+           <DailyUsersChart days={7} chartType="line" showSummary={true} autoRefresh={false} />
+        </div>
+      </div>
     </div>
   );
 }

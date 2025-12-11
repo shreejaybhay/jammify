@@ -31,6 +31,7 @@ import {
 import { genres } from "@/data/genres";
 import { useLikedSongs } from "@/hooks/useLikedSongs";
 import { useMusicPlayer } from "@/contexts/music-player-context";
+import { AddToPlaylistDialog } from "@/components/playlists/AddToPlaylistDialog";
 
 export default function GenreDetailPage() {
     const router = useRouter();
@@ -48,6 +49,8 @@ export default function GenreDetailPage() {
     const [loadingMore, setLoadingMore] = useState(false);
     const [hasMoreSongs, setHasMoreSongs] = useState(true);
     const [hasMorePlaylists, setHasMorePlaylists] = useState(true);
+    const [addToPlaylistDialogOpen, setAddToPlaylistDialogOpen] = useState(false);
+    const [selectedSong, setSelectedSong] = useState(null);
 
     // Find the current genre
     const currentGenre = genres.find(g => g.id === genreId);
@@ -245,8 +248,8 @@ export default function GenreDetailPage() {
 
     const handleAddToPlaylist = (e, song) => {
         e.stopPropagation();
-        // TODO: Implement add to playlist functionality
-        console.log('Add to playlist:', song.name);
+        setSelectedSong(song);
+        setAddToPlaylistDialogOpen(true);
     };
 
     const handleGoToArtist = (e, song) => {
@@ -807,6 +810,13 @@ export default function GenreDetailPage() {
                     </div>
                 </div>
             </SidebarInset>
+
+            {/* Add to Playlist Dialog */}
+            <AddToPlaylistDialog
+                open={addToPlaylistDialogOpen}
+                onOpenChange={setAddToPlaylistDialogOpen}
+                song={selectedSong}
+            />
         </SidebarProvider >
     );
 }

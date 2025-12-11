@@ -2,7 +2,7 @@
 /* eslint-disable react/no-unescaped-entities */
 "use client";
 
-import { useState, useEffect, useCallback, Suspense } from "react";
+import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Input } from "@/components/ui/input";
@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/breadcrumb";
 import { useMusicPlayer } from "@/contexts/music-player-context";
 import { useLikedSongs } from "@/hooks/useLikedSongs";
+import { AddToPlaylistDialog } from "@/components/playlists/AddToPlaylistDialog";
 
 function SearchPageContent() {
   const searchParams = useSearchParams();
@@ -44,6 +45,11 @@ function SearchPageContent() {
   const [searchResults, setSearchResults] = useState(null);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
+  const [addToPlaylistDialogOpen, setAddToPlaylistDialogOpen] = useState(false);
+  const [selectedSong, setSelectedSong] = useState(null);
+
+  // Ref for the search input to enable auto-focus
+  const searchInputRef = useRef(null);
 
   const { playSong, currentSong, isPlaying } = useMusicPlayer();
   const { toggleLike, isLiked } = useLikedSongs(session?.user?.id);
@@ -184,6 +190,18 @@ function SearchPageContent() {
     debounce((query) => performSearch(query), 500),
     []
   );
+
+  // Auto-focus the search input when the page loads
+  useEffect(() => {
+    // Small delay to ensure the component is fully mounted
+    const timer = setTimeout(() => {
+      if (searchInputRef.current) {
+        searchInputRef.current.focus();
+      }
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     if (initialQuery) {
@@ -328,8 +346,8 @@ function SearchPageContent() {
 
   const handleAddToPlaylist = (e, song) => {
     e.stopPropagation();
-    // TODO: Implement add to playlist functionality
-    console.log('Add to playlist:', song.title || song.name);
+    setSelectedSong(song);
+    setAddToPlaylistDialogOpen(true);
   };
 
   const handleGoToArtist = async (e, song) => {
@@ -603,6 +621,7 @@ function SearchPageContent() {
             <div className="relative w-full max-w-2xl mx-auto">
               <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
               <Input
+                ref={searchInputRef}
                 placeholder="What do you want to listen to?"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -833,10 +852,6 @@ function SearchPageContent() {
                                         Go to album
                                       </DropdownMenuItem>
                                       <DropdownMenuSeparator />
-                                      <DropdownMenuItem onClick={(e) => handleShare(e, song)}>
-                                        <Share className="w-3 h-3 mr-2" />
-                                        Share
-                                      </DropdownMenuItem>
                                       <DropdownMenuItem onClick={(e) => handleDownload(e, song)}>
                                         <Download className="w-3 h-3 mr-2" />
                                         Download
@@ -1301,6 +1316,13 @@ function SearchPageContent() {
           )}
         </div>
       </SidebarInset>
+
+      {/* Add to Playlist Dialog */}
+      <AddToPlaylistDialog
+        open={addToPlaylistDialogOpen}
+        onOpenChange={setAddToPlaylistDialogOpen}
+        song={selectedSong}
+      />
     </SidebarProvider>
   );
 }

@@ -18,8 +18,72 @@ export function useLikedPlaylists(userId) {
       const data = await response.json();
       
       if (data.success) {
-        setLikedPlaylists(data.data);
-        setLikedPlaylistIds(new Set(data.data.map(playlist => playlist.playlistId)));
+        // Separate user-created playlists from API playlists
+        const userPlaylistIds = [];
+        const apiPlaylists = [];
+        
+        data.data.forEach(playlist => {
+          const isUserPlaylist = playlist.playlistId && 
+            playlist.playlistId.length === 24 && 
+            /^[0-9a-fA-F]{24}$/.test(playlist.playlistId);
+          
+          if (isUserPlaylist) {
+            userPlaylistIds.push(playlist.playlistId);
+          } else {
+            // API playlists are always public
+            apiPlaylists.push(playlist);
+          }
+        });
+        
+        let accessiblePlaylists = [...apiPlaylists];
+        
+        // Batch check accessibility for user-created playlists
+        if (userPlaylistIds.length > 0) {
+          try {
+            const batchResponse = await fetch('/api/playlists/batch-check', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                playlistIds: userPlaylistIds,
+                userId
+              }),
+            });
+            
+            const batchResult = await batchResponse.json();
+            
+            if (batchResult.success) {
+              // Filter playlists based on batch accessibility check
+              const accessibleUserPlaylists = data.data.filter(playlist => {
+                const isUserPlaylist = playlist.playlistId && 
+                  playlist.playlistId.length === 24 && 
+                  /^[0-9a-fA-F]{24}$/.test(playlist.playlistId);
+                
+                if (!isUserPlaylist) return false;
+                
+                const accessibilityInfo = batchResult.data.find(
+                  item => item.playlistId === playlist.playlistId
+                );
+                
+                return accessibilityInfo?.isAccessible === true;
+              });
+              
+              accessiblePlaylists = [...apiPlaylists, ...accessibleUserPlaylists];
+            } else {
+              console.error('Batch accessibility check failed:', batchResult.error);
+              // Fallback: include all playlists if batch check fails
+              accessiblePlaylists = data.data;
+            }
+          } catch (error) {
+            console.error('Error in batch accessibility check:', error);
+            // Fallback: include all playlists if batch check fails
+            accessiblePlaylists = data.data;
+          }
+        }
+        
+        setLikedPlaylists(accessiblePlaylists);
+        setLikedPlaylistIds(new Set(accessiblePlaylists.map(playlist => playlist.playlistId)));
       } else {
         setError(data.error);
       }
