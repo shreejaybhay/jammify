@@ -7,8 +7,8 @@
 
 **A modern music streaming web application built for learning and experimentation**
 
-> ⚠️ **Educational Disclaimer**  
-> Jammify is a non-commercial, educational project created to demonstrate modern full-stack web development techniques.  
+⚠️ **Educational Disclaimer**  
+Jammify is a non-commercial, educational project created to demonstrate modern full-stack web development techniques.  
 > It is **not affiliated with or endorsed by any music provider**.
 
 ---
