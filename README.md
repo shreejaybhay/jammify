@@ -1,92 +1,119 @@
 <div align="center">
 
-# 🎵 Jammify
+<img src="https://i.postimg.cc/mknTZyn1/icon-512.png" alt="Jammify Logo" width="80" />
 
-### _Stream Music with Style_
+# **Jammify**
+### 🎶 Stream Music with Style
 
-**The next-generation music streaming platform that redefines how you experience music**
+**A modern music streaming web application built for learning and experimentation**
 
-> ⚠️ **Educational Project Disclaimer**: This is a demonstration project created for learning purposes only. Not intended for commercial use.
+> ⚠️ **Educational Disclaimer**  
+> Jammify is a non-commercial, educational project created to demonstrate modern full-stack web development techniques.  
+> It is **not affiliated with or endorsed by any music provider**.
 
-[![Next.js](https://img.shields.io/badge/Next.js-16.0-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
-[![React](https://img.shields.io/badge/React-19.2-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
-[![MongoDB](https://img.shields.io/badge/MongoDB-47A248?style=for-the-badge&logo=mongodb&logoColor=white)](https://mongodb.com/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
+---
 
-[🚀 Live Demo](https://jammify-music.vercel.app/) • [💻 View Code](https://github.com/shreejaybhay/jammify) • [📧 Contact](mailto:shreejaybhay26@gmail.com)
+[![Next.js](https://img.shields.io/badge/Next.js-App%20Router-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
+[![React](https://img.shields.io/badge/React-19-blue?style=for-the-badge&logo=react)](https://react.dev/)
+[![MongoDB](https://img.shields.io/badge/MongoDB-NoSQL-green?style=for-the-badge&logo=mongodb)](https://mongodb.com/)
+[![Tailwind CSS](https://img.shields.io/badge/TailwindCSS-Utility--First-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
+
+---
+
+[🚀 Live Demo](https://jammify-music.vercel.app/) •
+[💻 Source Code](https://github.com/shreejaybhay/jammify) •
+[📧 Contact](mailto:shreejaybhay26@gmail.com)
 
 </div>
 
 ---
 
-## ✨ What Makes Jammify Special
+## ✨ About Jammify
 
-Jammify isn't just another music app—it's a complete **free** audio experience crafted for music lovers who demand quality, style, and seamless functionality without any cost barriers.
+**Jammify** is a sleek and responsive music streaming platform built to explore and demonstrate:
 
-### 🎯 Core Features
+- Modern **Next.js App Router** architecture
+- Secure authentication and session handling
+- Advanced search with fuzzy matching
+- Scalable UI design using **Tailwind CSS** and **Radix UI**
+- Real-world third-party API integrations
 
-| Feature                 | Description                                               |
-| ----------------------- | --------------------------------------------------------- |
-| 🎧 **Premium Audio**    | Stream 50M+ songs in crystal-clear 320kbps quality        |
-| 🔐 **Secure Access**    | Enterprise-grade authentication with NextAuth & MongoDB   |
-| 🌙 **Adaptive Design**  | Beautiful dark/light themes that adapt to your preference |
-| 📱 **Universal Access** | Flawless experience across desktop, tablet, and mobile    |
-| 🎨 **Modern Interface** | Sleek UI powered by Radix components and Tailwind CSS     |
-| 🔍 **Smart Discovery**  | Advanced search with intelligent music recommendations    |
+The project prioritizes **clean architecture, UI/UX quality, and modern development practices**, rather than commercial deployment.
+
+---
+
+## 🎯 Core Features
+
+| Feature | Description |
+|------|-------------|
+| 🎧 **Premium Audio** | Stream 50M+ songs in crystal-clear 320kbps quality |
+| 🔐 **Secure Access** | Enterprise-grade authentication with NextAuth & MongoDB |
+| 🌙 **Adaptive Design** | Beautiful dark/light themes that adapt to your preference |
+| 📱 **Universal Access** | Flawless experience across desktop, tablet, and mobile |
+| 🎨 **Modern Interface** | Sleek UI powered by Radix components and Tailwind CSS |
+| 🔍 **Smart Discovery** | Advanced search with intelligent music recommendations |
 | 📚 **Personal Library** | Create playlists, save favorites, track listening history |
-| 🎙️ **Podcast Support**  | Discover and stream your favorite podcasts                |
+| 🎙️ **Podcast Support** | Discover and stream your favorite podcasts |
 | 🎵 **Smart Lyrics Search** | Find songs even with misspelled lyrics |
 
-## 🛠️ Built With Excellence
+---
 
-### Frontend Powerhouse
+## 🧱 Tech Stack
 
-- **Next.js 16** - React framework with App Router
-- **React 19.2** - Latest React with concurrent features
-- **Tailwind CSS 4** - Utility-first styling with modern features
-- **Radix UI** - Accessible, unstyled component primitives
-- **Lucide React** - Beautiful, customizable icons
+### Frontend
+- **Next.js (App Router)**
+- **React 19**
+- **Tailwind CSS**
+- **Radix UI**
+- **Lucide Icons**
 
-### Backend & Data
+### Backend
+- **NextAuth.js**
+- **MongoDB**
+- **Mongoose**
+- **JWT Authentication**
+- **Nodemailer (Email verification)**
 
-- **NextAuth** - Complete authentication solution
-- **MongoDB** - Flexible, scalable NoSQL database
-- **Mongoose** - Elegant MongoDB object modeling
-- **JWT** - Secure token-based authentication
-- **Nodemailer** - Email functionality for user verification
+### Search & Media APIs
+- **Natural.js** – Natural language processing
+- **String Similarity** – Text similarity matching
+- **Fastest Levenshtein** – Optimized edit-distance search
+- **Genius API** – Lyrics and song metadata
+- **JioSaavn API** – Music streaming data *(educational use only)*
 
-### Search Technology
+---
 
-- **Natural.js** - Advanced natural language processing
-- **String Similarity** - Multi-algorithm text matching
-- **Fastest Levenshtein** - Optimized edit distance calculations
-- **Genius API** - Comprehensive lyrics database integration
-- **JioSaavn API** - High-quality music streaming integration
+## 📸 Screenshots
 
-## 🎨 Screenshots & Demo
+### 🎼 Music Dashboard
+![Dashboard Screenshot](https://i.postimg.cc/WbfvgQ3r/image.png)
 
-### Music Dashboard
+### ▶️ Music Player
+![Player Screenshot](https://i.postimg.cc/PqyK8kft/image.png)
 
-![Jammify Dashboard](https://i.postimg.cc/WbfvgQ3r/image.png)
+---
 
-### Music Player Interface
+## ⚠️ Legal & Usage Disclaimer
 
-![Jammify Player](https://i.postimg.cc/PqyK8kft/image.png)
+- This project is **strictly for educational and portfolio purposes**
+- No music, lyrics, or media files are hosted directly
+- All audio and metadata are accessed via **public third-party APIs**
+- This project **must not be used commercially**
 
-## ⚠️ Disclaimer
-
-**This project is for educational purposes only.** It is created to demonstrate modern web development techniques using Next.js, React, and related technologies. This is not intended for commercial use.
+---
 
 ## 📄 License
 
-This project is for educational purposes only. All rights reserved.
+This repository is **not licensed for commercial use**.  
+All rights are reserved by the author.
 
 ---
 
 <div align="center">
 
-**Made with ❤️ for music lovers everywhere**
+**Built with ❤️ for learning, experimentation, and music lovers**
 
-[⭐ Star this repo](https://github.com/shreejaybhay/jammify) • [🐦 Follow updates](https://github.com/shreejaybhay) • [💬 Join community](https://github.com/shreejaybhay)
+[⭐ Star the repository](https://github.com/shreejaybhay/jammify) •
+[🐦 GitHub Profile](https://github.com/shreejaybhay)
 
 </div>
