@@ -9,7 +9,7 @@
 
 ⚠️ **Educational Disclaimer**  
 Jammify is a non-commercial, educational project created to demonstrate modern full-stack web development techniques.  
-> It is **not affiliated with or endorsed by any music provider**.
+It is **not affiliated with or endorsed by any music provider**.
 
 ---
 
