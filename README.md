@@ -35,6 +35,7 @@ Jammify isn't just another music app—it's a complete **free** audio experience
 | 🔍 **Smart Discovery**  | Advanced search with intelligent music recommendations    |
 | 📚 **Personal Library** | Create playlists, save favorites, track listening history |
 | 🎙️ **Podcast Support**  | Discover and stream your favorite podcasts                |
+| 🎵 **Smart Lyrics Search** | Find songs even with misspelled lyrics |
 
 ## 🛠️ Built With Excellence
 
@@ -53,6 +54,14 @@ Jammify isn't just another music app—it's a complete **free** audio experience
 - **Mongoose** - Elegant MongoDB object modeling
 - **JWT** - Secure token-based authentication
 - **Nodemailer** - Email functionality for user verification
+
+### Search Technology
+
+- **Natural.js** - Advanced natural language processing
+- **String Similarity** - Multi-algorithm text matching
+- **Fastest Levenshtein** - Optimized edit distance calculations
+- **Genius API** - Comprehensive lyrics database integration
+- **JioSaavn API** - High-quality music streaming integration
 
 ## 🎨 Screenshots & Demo
 
