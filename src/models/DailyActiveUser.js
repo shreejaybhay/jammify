@@ -31,6 +31,9 @@ dailyActiveUserSchema.index({ date: 1, 'users.email': 1 });
 // Unique index to prevent duplicate date documents
 dailyActiveUserSchema.index({ date: 1 }, { unique: true });
 
+// Additional sparse index to prevent duplicate users per date
+dailyActiveUserSchema.index({ date: 1, 'users.email': 1 }, { unique: true, sparse: true });
+
 // Static method to record user activity
 dailyActiveUserSchema.statics.recordUserActivity = async function(userEmail, userName = null) {
   const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format

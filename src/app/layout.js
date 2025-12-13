@@ -7,6 +7,7 @@ import { MusicPlayerProvider } from "@/contexts/music-player-context";
 import { MusicPlayerWrapper } from "@/components/music-player-wrapper";
 import { GlobalOnlineTracker } from "@/components/global-online-tracker";
 import UserActivityTracker from "@/components/analytics/UserActivityTracker";
+import { Analytics } from "@vercel/analytics/next"
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -82,6 +83,7 @@ export default function RootLayout({ children }) {
               <GlobalOnlineTracker />
               <UserActivityTracker />
               {children}
+              <Analytics />
               <MusicPlayerWrapper />
             </MusicPlayerProvider>
           </ThemeProvider>
