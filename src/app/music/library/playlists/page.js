@@ -261,7 +261,7 @@ export default function PlaylistsPage() {
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-4">
               {likedPlaylistsData.map((playlist) => (
                 <div
-                  key={playlist.id}
+                  key={playlist.playlistId || playlist.id}
                   className="group cursor-pointer p-3 md:p-4 rounded-xl bg-card hover:bg-accent/50 transition-all duration-300 hover:scale-[1.02] hover:shadow-lg border border-border/50"
                   onClick={() => handlePlaylistClick(playlist)}
                 >
@@ -292,7 +292,7 @@ export default function PlaylistsPage() {
                             return (
                               <div className="w-full h-full grid grid-cols-2 gap-0.5 bg-black">
                                 {cover.images.map((imageSrc, index) => (
-                                  <div key={index} className="w-full h-full overflow-hidden">
+                                  <div key={`collage-${playlist.playlistId}-${index}`} className="w-full h-full overflow-hidden">
                                     <img
                                       src={imageSrc}
                                       alt={`Song ${index + 1}`}

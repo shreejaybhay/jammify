@@ -28,9 +28,9 @@ const authOptions = {
           }
 
           await connectDB();
-          
+
           const user = await User.findOne({ email: credentials.email });
-          
+
           if (!user) {
             return null;
           }
@@ -40,7 +40,7 @@ const authOptions = {
           }
 
           const isPasswordValid = await user.comparePassword(credentials.password);
-          
+
           if (!isPasswordValid) {
             return null;
           }
@@ -70,11 +70,11 @@ const authOptions = {
       try {
         if (account?.provider === 'google' || account?.provider === 'github') {
           await connectDB();
-          
+
           console.log('OAuth SignIn - Provider:', account.provider, 'Email:', user.email);
-          
+
           let existingUser = await User.findOne({ email: user.email });
-          
+
           if (existingUser) {
             console.log('Found existing user:', existingUser._id.toString());
             // Update OAuth ID if not set
@@ -117,18 +117,17 @@ const authOptions = {
       }
     },
     async jwt({ token, user, account }) {
-      console.log('JWT callback - user:', user?.id, 'token.id:', token.id, 'account:', account?.provider);
-      
+
       // If user object is present (first time login), use the ID from signIn callback
       if (user) {
         console.log('Setting token.id from user.id:', user.id);
         token.id = user.id;
       }
-      
+
       // Check if token.id is a valid MongoDB ObjectId, if not, fetch from database
       const mongoose = require('mongoose');
       const isValidObjectId = token.id && mongoose.Types.ObjectId.isValid(token.id);
-      
+
       if (!token.id || !isValidObjectId) {
         console.log('Invalid or missing ObjectId, fetching from database. Current token.id:', token.id);
         try {
@@ -144,8 +143,7 @@ const authOptions = {
           console.error('JWT callback error:', error);
         }
       }
-      
-      console.log('Final token.id:', token.id);
+
       return token;
     },
     async session({ session, token }) {
