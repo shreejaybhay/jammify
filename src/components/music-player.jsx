@@ -8,11 +8,10 @@ import { useMusicPlayer } from "@/contexts/music-player-context";
 import { FullscreenMusicPlayer } from "@/components/fullscreen-music-player";
 
 export function MusicPlayer({ currentSong, playlist = [], onSongChange }) {
-  const { isPlaying, setIsPlaying } = useMusicPlayer();
+  const { isPlaying, setIsPlaying, isRadioPlaying, isFullscreenOpen, setIsFullscreenOpen } = useMusicPlayer();
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(0.7);
-  const [isFullscreen, setIsFullscreen] = useState(false);
   const audioRef = useRef(null);
 
   // Find current song index in playlist
@@ -21,7 +20,7 @@ export function MusicPlayer({ currentSong, playlist = [], onSongChange }) {
 
   // Helper functions
   const formatTime = (time) => {
-    if (!time || isNaN(time)) return "0:00";
+    if (!time || isNaN(time) || !isFinite(time)) return "0:00";
     const minutes = Math.floor(time / 60);
     const seconds = Math.floor(time % 60);
     return `${minutes}:${seconds.toString().padStart(2, "0")}`;
@@ -378,16 +377,20 @@ export function MusicPlayer({ currentSong, playlist = [], onSongChange }) {
 
   return (
     <>
-      <div className="fixed bottom-0 left-0 right-0 md:left-64 bg-background border-t border-border z-50">
-        <audio ref={audioRef} />
+      {/* Audio element - always present */}
+      <audio ref={audioRef} />
+      
+      {/* Only show the bottom bar when fullscreen is NOT open */}
+      {!isFullscreenOpen && (
+        <div className="fixed bottom-0 left-0 right-0 md:left-64 bg-background border-t border-border z-[9999]">
 
         {/* Mobile Layout */}
         <div className="block md:hidden">
           {/* Top row: Song info and main controls */}
           <div className="flex items-center justify-between p-3 pb-2">
             <div
-              className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer"
-              onClick={() => setIsFullscreen(true)}
+              className={`flex items-center gap-3 min-w-0 flex-1 ${!isRadioPlaying ? 'cursor-pointer' : 'cursor-default'}`}
+              onClick={() => !isRadioPlaying && setIsFullscreenOpen(true)}
             >
               <div className="w-10 h-10 rounded bg-gradient-to-br from-purple-500 to-pink-500 flex-shrink-0 overflow-hidden">
                 {currentSong.image?.length > 0 ? (
@@ -470,7 +473,7 @@ export function MusicPlayer({ currentSong, playlist = [], onSongChange }) {
                 className="flex-1"
               />
               <span className="text-xs text-muted-foreground min-w-[30px] text-center">
-                {formatTime(duration)}
+                {currentSong?.isRadio || !isFinite(duration) ? "LIVE" : formatTime(duration)}
               </span>
             </div>
           </div>
@@ -481,8 +484,8 @@ export function MusicPlayer({ currentSong, playlist = [], onSongChange }) {
           <div className="flex items-center gap-4 w-full">
             {/* Song Info */}
             <div
-              className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer hover:bg-muted/50 rounded-lg p-2 -m-2 transition-colors"
-              onClick={() => setIsFullscreen(true)}
+              className={`flex items-center gap-3 min-w-0 flex-1 rounded-lg p-2 -m-2 transition-colors ${!isRadioPlaying ? 'cursor-pointer hover:bg-muted/50' : 'cursor-default'}`}
+              onClick={() => !isRadioPlaying && setIsFullscreenOpen(true)}
             >
               <div className="w-12 h-12 rounded bg-gradient-to-br from-purple-500 to-pink-500 flex-shrink-0 overflow-hidden">
                 {currentSong.image?.length > 0 ? (
@@ -562,7 +565,7 @@ export function MusicPlayer({ currentSong, playlist = [], onSongChange }) {
                   className="flex-1"
                 />
                 <span className="text-xs text-muted-foreground min-w-[35px]">
-                  {formatTime(duration)}
+                  {currentSong?.isRadio || !isFinite(duration) ? "LIVE" : formatTime(duration)}
                 </span>
               </div>
             </div>
@@ -581,14 +584,15 @@ export function MusicPlayer({ currentSong, playlist = [], onSongChange }) {
           </div>
         </div>
       </div>
+      )}
 
-      {/* Fullscreen Music Player */}
+      {/* Fullscreen Music Player - Always render when there's a current song */}
       <FullscreenMusicPlayer
         currentSong={currentSong}
         playlist={playlist}
         onSongChange={onSongChange}
-        isOpen={isFullscreen}
-        onClose={() => setIsFullscreen(false)}
+        isOpen={isFullscreenOpen}
+        onClose={() => setIsFullscreenOpen(false)}
         audioRef={audioRef}
         currentTime={currentTime}
         duration={duration}

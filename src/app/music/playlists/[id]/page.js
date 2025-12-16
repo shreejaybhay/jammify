@@ -90,6 +90,14 @@ export default function PlaylistDetailPage({ params }) {
   // Initialize music player
   const { playSong, currentSong, isPlaying } = useMusicPlayer();
 
+  // Function to decode HTML entities
+  const decodeHtmlEntities = (text) => {
+    if (!text) return text;
+    const textarea = document.createElement('textarea');
+    textarea.innerHTML = text;
+    return textarea.value;
+  };
+
   // Extract dominant colors from image and make them darker for ambient effect
   const extractColorsFromImage = (imageSrc) => {
     return new Promise((resolve) => {
@@ -1341,7 +1349,7 @@ export default function PlaylistDetailPage({ params }) {
                     {playlist.name}
                   </h1>
                   <div className="flex items-center justify-center gap-2 text-sm opacity-80">
-                    <span className="font-semibold">{session?.user?.name || 'You'}</span>
+                    <span className="font-semibold">{playlist.ownerName || 'Unknown User'}</span>
                     <span>•</span>
                     <span>{playlist.songIds?.length || 0} songs</span>
                   </div>
@@ -1402,7 +1410,7 @@ export default function PlaylistDetailPage({ params }) {
                   {playlist.name}
                 </h1>
                 <div className="flex items-center gap-2 text-sm opacity-80">
-                  <span className="font-semibold">{session?.user?.name || 'You'}</span>
+                  <span className="font-semibold">{playlist.ownerName || 'Unknown User'}</span>
                   <span>•</span>
                   <span>{playlist.songIds?.length || 0} songs</span>
                   {playlist.createdAt && (
@@ -1611,7 +1619,7 @@ export default function PlaylistDetailPage({ params }) {
 
                           <div className="min-w-0 flex-1">
                             <p className={`font-medium truncate ${isCurrentSong ? 'text-green-500' : ''}`}>
-                              {song.name || `Track ${index + 1}`}
+                              {decodeHtmlEntities(song.name) || `Track ${index + 1}`}
                             </p>
                             <p className={`text-sm truncate ${isCurrentSong ? 'text-green-400' : 'text-muted-foreground'}`}>
                               {song.artists?.primary?.length > 0 ? (
@@ -1738,7 +1746,7 @@ export default function PlaylistDetailPage({ params }) {
                             </div>
                             <div className="min-w-0">
                               <p className={`font-medium truncate ${isCurrentSong ? 'text-green-500' : ''}`}>
-                                {song.name || `Track ${index + 1}`}
+                                {decodeHtmlEntities(song.name) || `Track ${index + 1}`}
                               </p>
                               <p className={`text-sm truncate ${isCurrentSong ? 'text-green-400' : 'text-muted-foreground'}`}>
                                 {song.artists?.primary?.length > 0 ? (
@@ -1751,7 +1759,7 @@ export default function PlaylistDetailPage({ params }) {
                                           router.push(`/music/artist/${artist.id}`);
                                         }}
                                       >
-                                        {artist.name}
+                                        {decodeHtmlEntities(artist.name)}
                                       </button>
                                       {artistIndex < song.artists.primary.length - 1 && ', '}
                                     </span>

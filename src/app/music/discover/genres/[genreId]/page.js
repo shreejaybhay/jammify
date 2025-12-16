@@ -44,8 +44,8 @@ export default function GenreDetailPage() {
     const [loading, setLoading] = useState(false);
     const [hasLoaded, setHasLoaded] = useState(false);
     const [activeTab, setActiveTab] = useState('songs');
-    const [songsPage, setSongsPage] = useState(5); // Track current page for songs
-    const [playlistsPage, setPlaylistsPage] = useState(3); // Track current page for playlists
+    const [songsPage, setSongsPage] = useState(1); // Track current page for songs
+    const [playlistsPage, setPlaylistsPage] = useState(1); // Track current page for playlists
     const [loadingMore, setLoadingMore] = useState(false);
     const [hasMoreSongs, setHasMoreSongs] = useState(true);
     const [hasMorePlaylists, setHasMorePlaylists] = useState(true);
@@ -67,48 +67,80 @@ export default function GenreDetailPage() {
             try {
                 setLoading(true);
 
-                // Fetch multiple pages of songs (popular first)
+                // Fetch multiple pages of songs using seed queries for better relevance
                 const fetchSongs = async () => {
                     const allSongs = [];
-                    const maxPages = 5; // Fetch first 5 pages (200 songs total)
+                    const seenIds = new Set(); // Track seen song IDs to prevent duplicates
+                    const seenSongs = new Set(); // Track seen song name + artist combinations
+                    const seedQueries = currentGenre?.seedQueries || [genreName];
 
-                    for (let page = 1; page <= maxPages; page++) {
+                    // Helper function to create a unique key for song + artist combination
+                    const createSongKey = (song) => {
+                        const songName = song.name?.toLowerCase().trim() || '';
+                        const artistName = song.artists?.primary?.[0]?.name?.toLowerCase().trim() ||
+                            song.primaryArtists?.toLowerCase().trim() || '';
+                        return `${songName}|${artistName}`;
+                    };
+
+                    // Use multiple seed queries to get diverse, relevant results
+                    for (const query of seedQueries.slice(0, 3)) { // Use first 3 seed queries
                         try {
-                            const response = await fetch(`https://jiosaavn-api-blush.vercel.app/api/search/songs?query=${encodeURIComponent(genreName)}&limit=40${page}`);
+                            const response = await fetch(`https://jiosaavn-api-blush.vercel.app/api/search/songs?query=${encodeURIComponent(query)}&limit=40&page=1`);
                             const data = await response.json();
 
                             if (data.success && data.data?.results && data.data.results.length > 0) {
-                                allSongs.push(...data.data.results);
-                            } else {
-                                break; // Stop if no more results
+                                // Filter out duplicates as we add them
+                                const newSongs = data.data.results.filter(song => {
+                                    // Skip if already seen by ID
+                                    if (seenIds.has(song.id)) {
+                                        return false;
+                                    }
+
+                                    // Skip if same song name + artist combination already exists
+                                    const songKey = createSongKey(song);
+                                    if (seenSongs.has(songKey)) {
+                                        return false;
+                                    }
+
+                                    seenIds.add(song.id);
+                                    seenSongs.add(songKey);
+                                    return true;
+                                });
+                                allSongs.push(...newSongs);
                             }
                         } catch (error) {
-                            console.error(`Error fetching songs page ${page}:`, error);
-                            break;
+                            console.error(`Error fetching songs for query "${query}":`, error);
                         }
                     }
 
                     return allSongs;
                 };
 
-                // Fetch multiple pages of playlists
+                // Fetch multiple pages of playlists using seed queries for better relevance
                 const fetchPlaylists = async () => {
                     const allPlaylists = [];
-                    const maxPages = 3; // Fetch first 3 pages (120 playlists total)
+                    const seenIds = new Set(); // Track seen playlist IDs to prevent duplicates
+                    const seedQueries = currentGenre?.seedQueries || [genreName];
 
-                    for (let page = 1; page <= maxPages; page++) {
+                    // Use multiple seed queries to get diverse, relevant results
+                    for (const query of seedQueries.slice(0, 2)) { // Use first 2 seed queries for playlists
                         try {
-                            const response = await fetch(`https://jiosaavn-api-blush.vercel.app/api/search/playlists?query=${encodeURIComponent(genreName)}&limit=40&page=${page}`);
+                            const response = await fetch(`https://jiosaavn-api-blush.vercel.app/api/search/playlists?query=${encodeURIComponent(query)}&limit=40&page=1`);
                             const data = await response.json();
 
                             if (data.success && data.data?.results && data.data.results.length > 0) {
-                                allPlaylists.push(...data.data.results);
-                            } else {
-                                break; // Stop if no more results
+                                // Filter out duplicates as we add them
+                                const newPlaylists = data.data.results.filter(playlist => {
+                                    if (seenIds.has(playlist.id)) {
+                                        return false; // Skip duplicate
+                                    }
+                                    seenIds.add(playlist.id);
+                                    return true;
+                                });
+                                allPlaylists.push(...newPlaylists);
                             }
                         } catch (error) {
-                            console.error(`Error fetching playlists page ${page}:`, error);
-                            break;
+                            console.error(`Error fetching playlists for query "${query}":`, error);
                         }
                     }
 
@@ -121,17 +153,9 @@ export default function GenreDetailPage() {
                     fetchPlaylists()
                 ]);
 
-                // Remove duplicates based on ID
-                const uniqueSongs = songsResults.filter((song, index, self) =>
-                    index === self.findIndex(s => s.id === song.id)
-                );
-
-                const uniquePlaylists = playlistsResults.filter((playlist, index, self) =>
-                    index === self.findIndex(p => p.id === playlist.id)
-                );
-
-                setSongs(uniqueSongs);
-                setPlaylists(uniquePlaylists);
+                // No need for additional deduplication since it's already handled in fetch functions
+                setSongs(songsResults);
+                setPlaylists(playlistsResults);
 
             } catch (error) {
                 console.error('Error fetching genre content:', error);
@@ -170,34 +194,105 @@ export default function GenreDetailPage() {
         return textarea.value;
     };
 
-    // Load more songs function
+    // Load more songs function using seed queries
     const loadMoreSongs = async () => {
         if (loadingMore || !hasMoreSongs) return;
 
         try {
             setLoadingMore(true);
-            const nextPage = songsPage + 1;
+            const seedQueries = currentGenre?.seedQueries || [genreName];
+            const allNewSongs = [];
+            const seenIds = new Set(); // Track seen song IDs to prevent duplicates within load more
+            const seenSongs = new Set(); // Track seen song name + artist combinations
 
-            const response = await fetch(`https://jiosaavn-api-blush.vercel.app/api/search/songs?query=${encodeURIComponent(genreName)}&limit=40&page=${nextPage}`);
-            const data = await response.json();
+            // Also track existing song IDs and song combinations to prevent duplicates with current songs
+            const existingIds = new Set(songs.map(song => song.id));
+            const existingSongs = new Set(songs.map(song => {
+                const songName = song.name?.toLowerCase().trim() || '';
+                const artistName = song.artists?.primary?.[0]?.name?.toLowerCase().trim() ||
+                    song.primaryArtists?.toLowerCase().trim() || '';
+                return `${songName}|${artistName}`;
+            }));
 
-            if (data.success && data.data?.results && data.data.results.length > 0) {
-                // Remove duplicates and add new songs
-                const newSongs = data.data.results.filter(newSong =>
-                    !songs.some(existingSong => existingSong.id === newSong.id)
-                );
+            // Helper function to create a unique key for song + artist combination
+            const createSongKey = (song) => {
+                const songName = song.name?.toLowerCase().trim() || '';
+                const artistName = song.artists?.primary?.[0]?.name?.toLowerCase().trim() ||
+                    song.primaryArtists?.toLowerCase().trim() || '';
+                return `${songName}|${artistName}`;
+            };
 
-                if (newSongs.length > 0) {
-                    setSongs(prevSongs => [...prevSongs, ...newSongs]);
-                    setSongsPage(nextPage);
-                } else {
-                    setHasMoreSongs(false);
+            // Aggressive strategy to find new content - try multiple approaches
+            let attempts = 0;
+            const maxAttempts = 5;
+
+            while (allNewSongs.length < 5 && attempts < maxAttempts) {
+                attempts++;
+                const currentPage = songsPage + attempts;
+
+                // Strategy 1: Try different seed queries with higher pages
+                for (const query of seedQueries.slice(0, Math.min(3, seedQueries.length))) {
+                    if (allNewSongs.length >= 20) break; // Stop if we have enough songs
+
+                    try {
+                        const response = await fetch(`https://jiosaavn-api-blush.vercel.app/api/search/songs?query=${encodeURIComponent(query)}&limit=30&page=${currentPage}`);
+                        const data = await response.json();
+
+                        if (data.success && data.data?.results && data.data.results.length > 0) {
+                            // Filter out duplicates as we add them
+                            const newSongs = data.data.results.filter(song => {
+                                // Skip if already exists in current songs by ID
+                                if (existingIds.has(song.id) || seenIds.has(song.id)) {
+                                    return false;
+                                }
+
+                                // Skip if same song name + artist combination already exists
+                                const songKey = createSongKey(song);
+                                if (existingSongs.has(songKey) || seenSongs.has(songKey)) {
+                                    return false;
+                                }
+
+                                seenIds.add(song.id);
+                                seenSongs.add(songKey);
+                                return true;
+                            });
+                            allNewSongs.push(...newSongs);
+                        }
+                    } catch (error) {
+                        console.error(`Error loading more songs for query "${query}" page ${currentPage}:`, error);
+                    }
                 }
 
-                // If we got less than 40 results, we've reached the end
-                if (data.data.results.length < 40) {
-                    setHasMoreSongs(false);
+                // If we still don't have enough songs, try with less strict deduplication
+                if (allNewSongs.length < 3 && attempts >= 3) {
+                    console.log(`Trying less strict deduplication for genre ${genreName}`);
+                    // Try with only ID-based deduplication (allow different versions of same song)
+                    for (const query of seedQueries.slice(0, 2)) {
+                        try {
+                            const response = await fetch(`https://jiosaavn-api-blush.vercel.app/api/search/songs?query=${encodeURIComponent(query)}&limit=25&page=${currentPage + 2}`);
+                            const data = await response.json();
+
+                            if (data.success && data.data?.results && data.data.results.length > 0) {
+                                // Only filter by ID, not by song name + artist
+                                const newSongs = data.data.results.filter(song => {
+                                    if (existingIds.has(song.id) || seenIds.has(song.id)) {
+                                        return false;
+                                    }
+                                    seenIds.add(song.id);
+                                    return true;
+                                });
+                                allNewSongs.push(...newSongs);
+                            }
+                        } catch (error) {
+                            console.error(`Error with less strict deduplication for query "${query}":`, error);
+                        }
+                    }
                 }
+            }
+
+            if (allNewSongs.length > 0) {
+                setSongs(prevSongs => [...prevSongs, ...allNewSongs]);
+                setSongsPage(prev => prev + 1);
             } else {
                 setHasMoreSongs(false);
             }
@@ -208,34 +303,56 @@ export default function GenreDetailPage() {
         }
     };
 
-    // Load more playlists function
+    // Load more playlists function using seed queries
     const loadMorePlaylists = async () => {
         if (loadingMore || !hasMorePlaylists) return;
 
         try {
             setLoadingMore(true);
-            const nextPage = playlistsPage + 1;
+            const seedQueries = currentGenre?.seedQueries || [genreName];
+            const allNewPlaylists = [];
+            const seenIds = new Set(); // Track seen playlist IDs to prevent duplicates within load more
 
-            const response = await fetch(`https://jiosaavn-api-blush.vercel.app/api/search/playlists?query=${encodeURIComponent(genreName)}&limit=40&page=${nextPage}`);
-            const data = await response.json();
+            // Also track existing playlist IDs to prevent duplicates with current playlists
+            const existingIds = new Set(playlists.map(playlist => playlist.id));
 
-            if (data.success && data.data?.results && data.data.results.length > 0) {
-                // Remove duplicates and add new playlists
-                const newPlaylists = data.data.results.filter(newPlaylist =>
-                    !playlists.some(existingPlaylist => existingPlaylist.id === newPlaylist.id)
-                );
+            // Aggressive strategy to find new playlists - try multiple approaches
+            let attempts = 0;
+            const maxAttempts = 4;
 
-                if (newPlaylists.length > 0) {
-                    setPlaylists(prevPlaylists => [...prevPlaylists, ...newPlaylists]);
-                    setPlaylistsPage(nextPage);
-                } else {
-                    setHasMorePlaylists(false);
+            while (allNewPlaylists.length < 3 && attempts < maxAttempts) {
+                attempts++;
+                const currentPage = playlistsPage + attempts;
+
+                // Try different seed queries with higher pages
+                for (const query of seedQueries.slice(0, Math.min(3, seedQueries.length))) {
+                    if (allNewPlaylists.length >= 15) break; // Stop if we have enough playlists
+
+                    try {
+                        const response = await fetch(`https://jiosaavn-api-blush.vercel.app/api/search/playlists?query=${encodeURIComponent(query)}&limit=25&page=${currentPage}`);
+                        const data = await response.json();
+
+                        if (data.success && data.data?.results && data.data.results.length > 0) {
+                            // Filter out duplicates as we add them
+                            const newPlaylists = data.data.results.filter(playlist => {
+                                // Skip if already exists in current playlists or already seen in this load more
+                                if (existingIds.has(playlist.id) || seenIds.has(playlist.id)) {
+                                    return false;
+                                }
+                                seenIds.add(playlist.id);
+                                return true;
+                            });
+                            allNewPlaylists.push(...newPlaylists);
+                        }
+                    } catch (error) {
+                        console.error(`Error loading more playlists for query "${query}" page ${currentPage}:`, error);
+                    }
                 }
+            }
 
-                // If we got less than 40 results, we've reached the end
-                if (data.data.results.length < 40) {
-                    setHasMorePlaylists(false);
-                }
+            if (allNewPlaylists.length > 0) {
+                setPlaylists(prevPlaylists => [...prevPlaylists, ...allNewPlaylists]);
+                setPlaylistsPage(prev => prev + 1);
             } else {
                 setHasMorePlaylists(false);
             }

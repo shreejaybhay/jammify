@@ -9,6 +9,10 @@ export function MusicPlayerProvider({ children }) {
   const [playlist, setPlaylist] = useState([]);
   const [isPlayerVisible, setIsPlayerVisible] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isFullscreenOpen, setIsFullscreenOpen] = useState(false);
+
+  // Helper function to check if current song is a radio station
+  const isRadioPlaying = currentSong?.isRadio === true;
 
   const playSong = (song, songList = []) => {
     setCurrentSong(song);
@@ -39,6 +43,9 @@ export function MusicPlayerProvider({ children }) {
         playlist,
         isPlayerVisible,
         isPlaying,
+        isRadioPlaying,
+        isFullscreenOpen,
+        setIsFullscreenOpen,
         playSong,
         handleSongChange,
         clearPlayer,

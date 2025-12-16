@@ -55,7 +55,7 @@ export function FullscreenMusicPlayer({
   playingFrom = "Search Results", // Add playingFrom prop with default
 }) {
   const { data: session } = useSession();
-  const { setIsPlaying } = useMusicPlayer();
+  const { setIsPlaying, setIsFullscreenOpen } = useMusicPlayer();
   const { toggleLike, isLiked } = useLikedSongs(session?.user?.id);
   const [isShuffled, setIsShuffled] = useState(false);
   const [repeatMode, setRepeatMode] = useState("off"); // 'off', 'all', 'one'
@@ -798,6 +798,11 @@ export function FullscreenMusicPlayer({
     }
     setShowLyrics(!showLyrics);
   };
+
+  // Sync fullscreen state with context
+  useEffect(() => {
+    setIsFullscreenOpen(isOpen);
+  }, [isOpen, setIsFullscreenOpen]);
 
   // Auto-scroll to current lyric line (Spotify-like behavior) - Optimized
   useEffect(() => {

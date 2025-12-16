@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import connectDB from '@/lib/mongodb';
 import Playlist from '@/models/Playlist';
+import User from '@/models/User';
 import mongoose from 'mongoose';
 
 // GET - Get specific playlist (with privacy controls)
@@ -30,6 +31,10 @@ export async function GET(request, { params }) {
       );
     }
 
+    // Fetch the owner's information
+    const owner = await User.findById(playlist.userId).select('name').lean();
+    const ownerName = owner ? owner.name : 'Unknown User';
+
     // Check access permissions
     const isOwner = session?.user?.id && playlist.userId.toString() === session.user.id;
     const isPublic = playlist.isPublic;
@@ -45,25 +50,13 @@ export async function GET(request, { params }) {
       }
     }
 
-    // Public playlist access rules
-    if (isPublic) {
-      // Anyone can view public playlists (even without authentication)
-      // But we'll include owner info for UI purposes
-      return NextResponse.json({
-        success: true,
-        data: {
-          ...playlist,
-          isOwner: isOwner
-        }
-      });
-    }
-
-    // Private playlist - owner access
+    // Return playlist data with owner name
     return NextResponse.json({
       success: true,
       data: {
         ...playlist,
-        isOwner: true
+        ownerName: ownerName,
+        isOwner: isOwner
       }
     });
     
