@@ -47,7 +47,7 @@ export default function FavoritesPage() {
 
   const handlePlayClick = (song, index) => {
     const isCurrentSong = currentSong?.id === song.songId;
-    
+
     // If clicking on the currently playing song, do nothing
     if (isCurrentSong) {
       return;
@@ -579,7 +579,7 @@ export default function FavoritesPage() {
               >
                 <Download className="w-5 h-5 md:w-6 md:h-6" />
               </Button>
-             
+
             </div>
           </div>
 
@@ -719,7 +719,7 @@ export default function FavoritesPage() {
                                   <MoreVertical className="w-4 h-4" />
                                 </Button>
                               </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-48">
+                              <DropdownMenuContent align="end" className="w-48 z-[9999]">
                                 <DropdownMenuItem onClick={(e) => handleAddToPlaylist(e, likedSong)}>
                                   <Plus className="w-4 h-4 mr-2" />
                                   Add to playlist
@@ -882,7 +882,7 @@ export default function FavoritesPage() {
                                   <MoreVertical className="w-4 h-4" />
                                 </Button>
                               </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-48">
+                              <DropdownMenuContent align="end" className="w-48 z-[9999]">
                                 <DropdownMenuItem onClick={(e) => handleAddToPlaylist(e, likedSong)}>
                                   <Plus className="w-4 h-4 mr-2" />
                                   Add to playlist

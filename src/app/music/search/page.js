@@ -1021,7 +1021,7 @@ function SearchPageContent() {
                                         <MoreVertical className="w-3 h-3" />
                                       </Button>
                                     </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end" className="w-48">
+                                    <DropdownMenuContent align="end" className="w-48 z-[9999]">
                                       <DropdownMenuItem
                                         onClick={async (e) => {
                                           e.stopPropagation();
@@ -1338,7 +1338,7 @@ function SearchPageContent() {
                                     <MoreVertical className="w-4 h-4" />
                                   </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="w-48">
+                                <DropdownMenuContent align="end" className="w-48 z-[9999]">
                                   <DropdownMenuItem
                                     onClick={async (e) => {
                                       e.stopPropagation();

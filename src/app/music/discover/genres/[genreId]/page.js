@@ -669,7 +669,7 @@ export default function GenreDetailPage() {
                                                                             <MoreVertical className="w-4 h-4" />
                                                                         </Button>
                                                                     </DropdownMenuTrigger>
-                                                                    <DropdownMenuContent align="end" className="w-48">
+                                                                    <DropdownMenuContent align="end" className="w-48 z-[9999]">
                                                                         <DropdownMenuItem onClick={(e) => handleAddToPlaylist(e, song)}>
                                                                             <Plus className="w-4 h-4 mr-2" />
                                                                             Add to playlist
@@ -787,7 +787,7 @@ export default function GenreDetailPage() {
                                                                             <MoreVertical className="w-4 h-4" />
                                                                         </Button>
                                                                     </DropdownMenuTrigger>
-                                                                    <DropdownMenuContent align="end" className="w-48">
+                                                                    <DropdownMenuContent align="end" className="w-48 z-[9999]">
                                                                         <DropdownMenuItem onClick={(e) => handleAddToPlaylist(e, song)}>
                                                                             <Plus className="w-4 h-4 mr-2" />
                                                                             Add to playlist

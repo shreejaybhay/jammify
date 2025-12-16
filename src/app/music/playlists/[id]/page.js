@@ -1477,7 +1477,7 @@ export default function PlaylistDetailPage({ params }) {
                     <MoreVertical className="w-5 h-5 md:w-6 md:h-6" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuContent align="end" className="w-48 z-[9999]">
                   {/* Owner-only options */}
                   {isOwner && (
                     <>
@@ -1650,7 +1650,7 @@ export default function PlaylistDetailPage({ params }) {
                                   <MoreVertical className="w-4 h-4" />
                                 </Button>
                               </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-48">
+                              <DropdownMenuContent align="end" className="w-48 z-[9999]">
                                 {isOwner && (
                                   <>
                                     <DropdownMenuItem
@@ -1782,7 +1782,7 @@ export default function PlaylistDetailPage({ params }) {
                                   }
                                 }}
                               >
-                                {song.album.name}
+                                {decodeHtmlEntities(song.album.name)}
                               </button>
                             ) : (
                               'Unknown Album'
@@ -1808,7 +1808,7 @@ export default function PlaylistDetailPage({ params }) {
                                   <MoreVertical className="w-4 h-4" />
                                 </Button>
                               </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-48">
+                              <DropdownMenuContent align="end" className="w-48 z-[9999]">
                                 {isOwner && (
                                   <>
                                     <DropdownMenuItem
