@@ -85,7 +85,7 @@ export default function GenreDetailPage() {
                     // Use multiple seed queries to get diverse, relevant results
                     for (const query of seedQueries.slice(0, 3)) { // Use first 3 seed queries
                         try {
-                            const response = await fetch(`https://jiosaavn-api-blush.vercel.app/api/search/songs?query=${encodeURIComponent(query)}&limit=40&page=1`);
+                            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/search/songs?query=${encodeURIComponent(query)}&limit=40&page=1`);
                             const data = await response.json();
 
                             if (data.success && data.data?.results && data.data.results.length > 0) {
@@ -125,7 +125,7 @@ export default function GenreDetailPage() {
                     // Use multiple seed queries to get diverse, relevant results
                     for (const query of seedQueries.slice(0, 2)) { // Use first 2 seed queries for playlists
                         try {
-                            const response = await fetch(`https://jiosaavn-api-blush.vercel.app/api/search/playlists?query=${encodeURIComponent(query)}&limit=40&page=1`);
+                            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/search/playlists?query=${encodeURIComponent(query)}&limit=40&page=1`);
                             const data = await response.json();
 
                             if (data.success && data.data?.results && data.data.results.length > 0) {
@@ -235,7 +235,7 @@ export default function GenreDetailPage() {
                     if (allNewSongs.length >= 20) break; // Stop if we have enough songs
 
                     try {
-                        const response = await fetch(`https://jiosaavn-api-blush.vercel.app/api/search/songs?query=${encodeURIComponent(query)}&limit=30&page=${currentPage}`);
+                        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/search/songs?query=${encodeURIComponent(query)}&limit=30&page=${currentPage}`);
                         const data = await response.json();
 
                         if (data.success && data.data?.results && data.data.results.length > 0) {
@@ -269,7 +269,7 @@ export default function GenreDetailPage() {
                     // Try with only ID-based deduplication (allow different versions of same song)
                     for (const query of seedQueries.slice(0, 2)) {
                         try {
-                            const response = await fetch(`https://jiosaavn-api-blush.vercel.app/api/search/songs?query=${encodeURIComponent(query)}&limit=25&page=${currentPage + 2}`);
+                            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/search/songs?query=${encodeURIComponent(query)}&limit=25&page=${currentPage + 2}`);
                             const data = await response.json();
 
                             if (data.success && data.data?.results && data.data.results.length > 0) {
@@ -329,7 +329,7 @@ export default function GenreDetailPage() {
                     if (allNewPlaylists.length >= 15) break; // Stop if we have enough playlists
 
                     try {
-                        const response = await fetch(`https://jiosaavn-api-blush.vercel.app/api/search/playlists?query=${encodeURIComponent(query)}&limit=25&page=${currentPage}`);
+                        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/search/playlists?query=${encodeURIComponent(query)}&limit=25&page=${currentPage}`);
                         const data = await response.json();
 
                         if (data.success && data.data?.results && data.data.results.length > 0) {

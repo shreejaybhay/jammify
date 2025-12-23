@@ -284,7 +284,7 @@ export default function FavoritesPage() {
 
     // If no download URL found, fetch from API
     if (!downloadUrl) {
-      const response = await fetch(`https://jiosaavn-api-blush.vercel.app/api/songs?ids=${song.songId}`);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/songs?ids=${song.songId}`);
       const data = await response.json();
 
       if (data.success && data.data && data.data[0]?.downloadUrl) {

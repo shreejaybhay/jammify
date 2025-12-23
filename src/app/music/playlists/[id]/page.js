@@ -251,7 +251,7 @@ export default function PlaylistDetailPage({ params }) {
         const songPromises = songIds.map(async (songId) => {
           try {
             console.log(`Fetching song: ${songId}`);
-            const response = await fetch(`https://jiosaavn-api-blush.vercel.app/api/songs?ids=${songId}`);
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/songs?ids=${songId}`);
             console.log(`Response status for ${songId}:`, response.status);
 
             const data = await response.json();
@@ -948,7 +948,7 @@ export default function PlaylistDetailPage({ params }) {
 
     // If no download URL found, fetch from API
     if (!downloadUrl) {
-      const response = await fetch(`https://jiosaavn-api-blush.vercel.app/api/songs?ids=${song.id}`);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/songs?ids=${song.id}`);
       const data = await response.json();
 
       if (data.success && data.data && data.data[0]?.downloadUrl) {

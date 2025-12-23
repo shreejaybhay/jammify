@@ -77,7 +77,7 @@ function SearchPageContent() {
       return;
     }
     try {
-      const response = await fetch(`https://jiosaavn-api-blush.vercel.app/api/search?query=${encodeURIComponent(query)}`);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/search?query=${encodeURIComponent(query)}`);
       const data = await response.json();
 
       console.log('Search API Response:', data);
@@ -113,7 +113,7 @@ function SearchPageContent() {
           for (const song of transformedData.songs.results.slice(0, 3)) {
             try {
               // Fetch detailed song info to get proper artist data with IDs
-              const songResponse = await fetch(`https://jiosaavn-api-blush.vercel.app/api/songs/${song.id}`);
+              const songResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/songs/${song.id}`);
               const songData = await songResponse.json();
 
               if (songData.success && songData.data?.[0]?.artists?.primary) {
@@ -435,7 +435,7 @@ function SearchPageContent() {
       // Always fetch detailed data for the current song if it doesn't have downloadUrl
       let detailedCurrentSong = song;
       if (!song.downloadUrl && song.id) {
-        const response = await fetch(`https://jiosaavn-api-blush.vercel.app/api/songs/${song.id}`);
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/songs/${song.id}`);
         const data = await response.json();
 
         if (data.success && data.data && data.data.length > 0) {
@@ -454,7 +454,7 @@ function SearchPageContent() {
           // If no downloadUrl, fetch detailed data
           if (playlistSong.id) {
             try {
-              const response = await fetch(`https://jiosaavn-api-blush.vercel.app/api/songs/${playlistSong.id}`);
+              const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/songs/${playlistSong.id}`);
               const data = await response.json();
 
               if (data.success && data.data && data.data.length > 0) {
@@ -483,7 +483,7 @@ function SearchPageContent() {
     if (artistId.startsWith('search-') && artistName) {
       try {
         // Search for the artist to get their real ID
-        const response = await fetch(`https://jiosaavn-api-blush.vercel.app/api/search?query=${encodeURIComponent(artistName)}`);
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/search?query=${encodeURIComponent(artistName)}`);
         const data = await response.json();
 
         if (data.success && data.data.artists?.results?.length > 0) {
@@ -574,7 +574,7 @@ function SearchPageContent() {
       // First, try to get detailed song info which has proper artist data with IDs
       let detailedSong = song;
       if (!song.artists?.primary && song.id) {
-        const response = await fetch(`https://jiosaavn-api-blush.vercel.app/api/songs/${song.id}`);
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/songs/${song.id}`);
         const data = await response.json();
 
         if (data.success && data.data && data.data.length > 0) {
@@ -595,7 +595,7 @@ function SearchPageContent() {
       const artistName = getArtistNames(song);
       if (artistName && artistName !== 'Unknown Artist') {
         // Try to find the artist ID by searching
-        const searchResponse = await fetch(`https://jiosaavn-api-blush.vercel.app/api/search?query=${encodeURIComponent(artistName)}`);
+        const searchResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/search?query=${encodeURIComponent(artistName)}`);
         const searchData = await searchResponse.json();
 
         if (searchData.success && searchData.data.artists?.results?.length > 0) {
@@ -637,7 +637,7 @@ function SearchPageContent() {
       // First, try to get detailed song info which has proper album data with IDs
       let detailedSong = song;
       if (!song.album?.id && song.id) {
-        const response = await fetch(`https://jiosaavn-api-blush.vercel.app/api/songs/${song.id}`);
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/songs/${song.id}`);
         const data = await response.json();
 
         if (data.success && data.data && data.data.length > 0) {
@@ -655,7 +655,7 @@ function SearchPageContent() {
       const albumName = detailedSong.album?.name || song.album;
       if (albumName && typeof albumName === 'string') {
         // Try to find the album ID by searching
-        const searchResponse = await fetch(`https://jiosaavn-api-blush.vercel.app/api/search?query=${encodeURIComponent(albumName)}`);
+        const searchResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/search?query=${encodeURIComponent(albumName)}`);
         const searchData = await searchResponse.json();
 
         if (searchData.success && searchData.data.albums?.results?.length > 0) {
@@ -728,7 +728,7 @@ function SearchPageContent() {
       // If no download URL found, fetch from API
       if (!downloadUrl && song.id) {
         console.log('No download URL found in song object, fetching from API...');
-        const response = await fetch(`https://jiosaavn-api-blush.vercel.app/api/songs/${song.id}`);
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/songs/${song.id}`);
         const data = await response.json();
 
         if (data.success && data.data && data.data[0]?.downloadUrl) {
@@ -1030,7 +1030,7 @@ function SearchPageContent() {
                                             let detailedSong = song;
 
                                             if (!song.downloadUrl && song.id) {
-                                              const response = await fetch(`https://jiosaavn-api-blush.vercel.app/api/songs/${song.id}`);
+                                              const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/songs/${song.id}`);
                                               const data = await response.json();
 
                                               if (data.success && data.data && data.data.length > 0) {
@@ -1347,7 +1347,7 @@ function SearchPageContent() {
                                         let detailedSong = song;
 
                                         if (!song.downloadUrl && song.id) {
-                                          const response = await fetch(`https://jiosaavn-api-blush.vercel.app/api/songs/${song.id}`);
+                                          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/songs/${song.id}`);
                                           const data = await response.json();
 
                                           if (data.success && data.data && data.data.length > 0) {

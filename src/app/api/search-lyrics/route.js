@@ -133,7 +133,7 @@ export async function GET(request) {
           const timeoutId = setTimeout(() => controller.abort(), 2000); // More aggressive timeout
 
           const jiosaavnResponse = await fetch(
-            `https://jiosaavn-api-blush.vercel.app/api/search?query=${encodeURIComponent(searchQuery)}`,
+            `${process.env.NEXT_PUBLIC_API_URL}/api/search?query=${encodeURIComponent(searchQuery)}`,
             {
               signal: controller.signal,
               headers: {

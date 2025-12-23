@@ -45,7 +45,7 @@ export async function GET(request) {
             const songsToFetch = playlist.songIds.slice(0, 4);
             const songPromises = songsToFetch.map(async (songId) => {
               try {
-                const response = await fetch(`https://jiosaavn-api-blush.vercel.app/api/songs/${songId}`);
+                const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/songs/${songId}`);
                 const data = await response.json();
                 if (data.success && data.data && data.data.length > 0) {
                   return data.data[0];

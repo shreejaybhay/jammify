@@ -66,7 +66,7 @@ export default function PlaylistsPage() {
                       const songsToFetch = playlistResult.data.songIds.slice(0, 4);
                       const songPromises = songsToFetch.map(async (songId) => {
                         try {
-                          const response = await fetch(`https://jiosaavn-api-blush.vercel.app/api/songs?ids=${songId}`);
+                          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/songs?ids=${songId}`);
                           const data = await response.json();
                           if (data.success && data.data && data.data.length > 0) {
                             return data.data[0];
