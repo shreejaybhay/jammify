@@ -17,7 +17,7 @@ export async function GET(request) {
 
     // Generate spell-corrected search queries
     const searchQueries = generateSpellCorrectedQueries(query);
-    
+
     // Search Genius API with multiple spell-corrected variations
     const geniusPromises = searchQueries.map(async (searchQuery) => {
       try {
@@ -29,7 +29,7 @@ export async function GET(request) {
             },
           }
         );
-        
+
         if (response.ok) {
           const data = await response.json();
           return { query: searchQuery, data, isOriginal: searchQuery === query };
@@ -41,11 +41,11 @@ export async function GET(request) {
     });
 
     const geniusResults = await Promise.allSettled(geniusPromises);
-    
+
     // Combine and prioritize results from all search queries
     const allHits = [];
     const seenIds = new Set();
-    
+
     // First, add results from original query (highest priority)
     for (const result of geniusResults) {
       if (result.status === 'fulfilled' && result.value?.data?.response?.hits && result.value.isOriginal) {
@@ -57,7 +57,7 @@ export async function GET(request) {
         }
       }
     }
-    
+
     // Then add results from spell-corrected queries
     for (const result of geniusResults) {
       if (result.status === 'fulfilled' && result.value?.data?.response?.hits && !result.value.isOriginal) {
@@ -236,7 +236,7 @@ export async function GET(request) {
 // Spell correction and query generation utilities
 function generateSpellCorrectedQueries(query) {
   const queries = [query]; // Always include original query first
-  
+
   // Common misspelling patterns and corrections
   const spellCorrections = {
     // Common typos
@@ -271,7 +271,7 @@ function generateSpellCorrectedQueries(query) {
     'unfortunatly': 'unfortunately',
     'usefull': 'useful',
     'wonderfull': 'wonderful',
-    
+
     // Music-specific corrections and contractions
     'dont': "don't",
     'doesnt': "doesn't",
@@ -303,7 +303,7 @@ function generateSpellCorrectedQueries(query) {
     'hows': "how's",
     'whens': "when's",
     'whys': "why's",
-    
+
     // Common informal contractions and word corrections
     'kinda': 'kind of',
     'gonna': 'going to',
@@ -321,7 +321,7 @@ function generateSpellCorrectedQueries(query) {
     'aswell': 'as well',
     'atleast': 'at least',
     'probly': 'probably',
-    
+
     // Common pattern fixes for your specific case
     'kind a': 'kind of',
     'sort a': 'sort of',
@@ -330,7 +330,7 @@ function generateSpellCorrectedQueries(query) {
     'type a': 'type of',
     'piece a': 'piece of'
   };
-  
+
   // Apply direct spell corrections
   let correctedQuery = query.toLowerCase();
   for (const [wrong, correct] of Object.entries(spellCorrections)) {
@@ -341,13 +341,13 @@ function generateSpellCorrectedQueries(query) {
       }
     }
   }
-  
+
   // Advanced spell correction using edit distance for individual words
   const words = query.toLowerCase().split(' ');
   const correctedWords = words.map(word => {
     // Skip very short words
     if (word.length <= 2) return word;
-    
+
     // Check if word needs correction using common English words
     const commonWords = [
       'staring', 'looking', 'watching', 'seeing', 'gazing',
@@ -361,10 +361,10 @@ function generateSpellCorrectedQueries(query) {
       'together', 'forever', 'alone', 'apart', 'close',
       'feeling', 'emotion', 'passion', 'desire', 'longing'
     ];
-    
+
     let bestMatch = word;
     let bestDistance = Infinity;
-    
+
     for (const commonWord of commonWords) {
       const distance = levenshteinDistance(word, commonWord);
       // Only suggest if the distance is reasonable (1-2 characters different)
@@ -376,16 +376,16 @@ function generateSpellCorrectedQueries(query) {
         }
       }
     }
-    
+
     return bestMatch;
   });
-  
+
   // Add spell-corrected version if different
   const spellCorrectedQuery = correctedWords.join(' ');
   if (spellCorrectedQuery !== query.toLowerCase() && !queries.includes(spellCorrectedQuery)) {
     queries.push(spellCorrectedQuery);
   }
-  
+
   // Generate phonetic variations using Metaphone
   try {
     const metaphone = natural.Metaphone;
@@ -398,7 +398,7 @@ function generateSpellCorrectedQueries(query) {
       }
       return word;
     });
-    
+
     const phoneticQuery = phoneticWords.join(' ');
     if (phoneticQuery !== query.toLowerCase() && !queries.includes(phoneticQuery)) {
       queries.push(phoneticQuery);
@@ -406,7 +406,7 @@ function generateSpellCorrectedQueries(query) {
   } catch (error) {
     // Fallback if natural processing fails
   }
-  
+
   // Add partial queries for long lyrics searches
   if (query.length > 15) {
     const queryWords = words.filter(w => w.length > 2);
@@ -422,7 +422,7 @@ function generateSpellCorrectedQueries(query) {
       }
     }
   }
-  
+
   // Remove duplicates and filter out very short queries
   return [...new Set(queries)]
     .filter(q => q && q.trim().length > 2)

@@ -30,7 +30,7 @@ export default function NewReleasesPage() {
     const fetchAllNewReleases = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/search/playlists?query=new%20releases&page=0&limit=50`);
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/search/playlists?query=new%20releases&page=0&limit=50`);
         const data = await response.json();
 
         if (data.success && data.data.results) {

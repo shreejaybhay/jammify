@@ -65,7 +65,7 @@ export default function ArtistsPage() {
       console.log('Fetching detailed data for all artists...');
       const artistPromises = data.data.map(async (likedArtist) => {
         try {
-          const artistResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/artists?id=${likedArtist.artistId}`);
+          const artistResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/artists?id=${likedArtist.artistId}`);
 
           if (!artistResponse.ok) {
             throw new Error(`HTTP error! status: ${artistResponse.status}`);

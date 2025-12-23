@@ -61,7 +61,7 @@ export default function AlbumPage() {
         setLoading(true);
         console.log(`Fetching album ${albumId}`);
 
-        const albumResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/albums?id=${albumId}`);
+        const albumResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/albums?id=${albumId}`);
         const albumData = await albumResponse.json();
 
         if (albumData.success && albumData.data) {
@@ -282,7 +282,7 @@ export default function AlbumPage() {
       // If no download URL found, fetch from API
       if (!downloadUrl) {
         console.log('No download URL found in song object, fetching from API...');
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/songs?ids=${song.id}`);
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/songs?ids=${song.id}`);
         const data = await response.json();
 
         if (data.success && data.data && data.data[0]?.downloadUrl) {

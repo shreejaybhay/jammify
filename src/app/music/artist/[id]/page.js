@@ -59,7 +59,7 @@ export default function ArtistPage() {
         setLoading(true);
         console.log(`Fetching artist ${artistId}`);
 
-        const artistResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/artists?id=${artistId}`);
+        const artistResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/artists?id=${artistId}`);
         const artistData = await artistResponse.json();
 
         if (artistData.success && artistData.data) {
@@ -278,7 +278,7 @@ export default function ArtistPage() {
       // If no download URL found, fetch from API
       if (!downloadUrl) {
         console.log('No download URL found in song object, fetching from API...');
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/songs?ids=${song.id}`);
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/songs?ids=${song.id}`);
         const data = await response.json();
 
         if (data.success && data.data && data.data[0]?.downloadUrl) {

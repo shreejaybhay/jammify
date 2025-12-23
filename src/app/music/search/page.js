@@ -215,7 +215,7 @@ function SearchPageContent() {
       if (data.success) {
         setLyricsResults(data.data);
       } else {
-        console.error('Lyrics search failed:', data.error);
+        console.error('Lyrics search failed:', data.error || data.message || 'Unknown error');
         setLyricsResults([]);
       }
     } catch (error) {
@@ -291,7 +291,7 @@ function SearchPageContent() {
       if (data.success) {
         setPublicPlaylists(data.data);
       } else {
-        console.error('Public playlists search failed:', data.error);
+        console.error('Public playlists search failed:', data.error || data.message || 'Unknown error');
         setPublicPlaylists([]);
       }
     } catch (error) {

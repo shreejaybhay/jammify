@@ -68,7 +68,7 @@ function PlaylistPageContent() {
 
         // Get playlist data with all songs using the exact songCount from search results
         console.log(`Fetching playlist ${playlistId} with limit=${songCount}`);
-        const playlistResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/playlists?id=${playlistId}&page=0&limit=${songCount}`);
+        const playlistResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/playlists?id=${playlistId}&page=0&limit=${songCount}`);
         const playlistData = await playlistResponse.json();
 
         if (playlistData.success && playlistData.data) {
@@ -83,7 +83,7 @@ function PlaylistPageContent() {
           if (!imageUrl || imageUrl.startsWith('?') || imageUrl.length < 10) {
             console.log('Invalid or missing image in playlist API, trying search API...');
             try {
-              const searchResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/search/playlists?query=new%20releases&page=0&limit=100`);
+              const searchResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/search/playlists?query=new%20releases&page=0&limit=100`);
               const searchData = await searchResponse.json();
 
               if (searchData.success && searchData.data.results) {
@@ -274,7 +274,7 @@ function PlaylistPageContent() {
       // If no download URL found, fetch from API
       if (!downloadUrl) {
         console.log('No download URL found in song object, fetching from API...');
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/songs?ids=${song.id}`);
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/songs?ids=${song.id}`);
         const data = await response.json();
 
         if (data.success && data.data && data.data[0]?.downloadUrl) {

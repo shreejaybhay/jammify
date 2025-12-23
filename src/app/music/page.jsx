@@ -48,7 +48,7 @@ export default function MusicPage() {
       try {
         setLoading(true);
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/search/playlists?query=new%20releases&page=0&limit=6`
+          `${process.env.NEXT_PUBLIC_API_URL}/api/search/playlists?query=new%20releases&page=0&limit=6`
         );
         const data = await response.json();
 
@@ -66,7 +66,7 @@ export default function MusicPage() {
       try {
         setTrendingLoading(true);
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/search/playlists?query=trending&page=0&limit=6`
+          `${process.env.NEXT_PUBLIC_API_URL}/api/search/playlists?query=trending&page=0&limit=6`
         );
         const data = await response.json();
 
@@ -84,7 +84,7 @@ export default function MusicPage() {
       try {
         setTopHitsLoading(true);
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/search/playlists?query=top%20hits&page=0&limit=6`
+          `${process.env.NEXT_PUBLIC_API_URL}/api/search/playlists?query=top%20hits&page=0&limit=6`
         );
         const data = await response.json();
 
@@ -102,7 +102,7 @@ export default function MusicPage() {
       try {
         setEnglishTopLoading(true);
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/search/playlists?query=english%20top&page=0&limit=6`
+          `${process.env.NEXT_PUBLIC_API_URL}/api/search/playlists?query=english%20top&page=0&limit=6`
         );
         const data = await response.json();
 

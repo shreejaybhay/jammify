@@ -142,7 +142,7 @@ export default function TopHitsPage() {
                 }
 
                 // Fresh fetch if no saved data
-                const initialResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/search/playlists?query=top%20hits&page=0&limit=1`);
+                const initialResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/search/playlists?query=top%20hits&page=0&limit=1`);
                 const initialData = await initialResponse.json();
 
                 if (initialData.success && initialData.data.total) {
@@ -156,7 +156,7 @@ export default function TopHitsPage() {
                     const promises = [];
                     for (let page = 0; page < totalPages; page++) {
                         promises.push(
-                            fetch(`${process.env.NEXT_PUBLIC_API_URL}/search/playlists?query=top%20hits&page=${page}&limit=${limit}`)
+                            fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/search/playlists?query=top%20hits&page=${page}&limit=${limit}`)
                                 .then(response => response.json())
                         );
                     }
